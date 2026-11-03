@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "options-engine"
-version = "0.1.0"
-description = "European vanilla option pricing with continuous dividends"
+version = "0.2.0"
+description = "European BSM prices and Greeks, and American CRR option pricing"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
