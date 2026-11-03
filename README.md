@@ -2,7 +2,8 @@
 
 Provides **European vanilla prices and analytic Greeks** under
 Black–Scholes–Merton (BSM), and **European/American CRR tree prices**, with
-constant continuous dividends. Finite differences, PSOR, American numerical
+constant continuous dividends. A Crank–Nicolson/PSOR finite-difference solver
+provides an independent European/American price comparison. American numerical
 Greeks and portfolio risk remain future work.
 
 ## Install and run
@@ -162,4 +163,75 @@ standard put reference, no early exercise for a non-dividend call with
 nonnegative rates, dividend calls, obstacles, deterministic interior exercise,
 invalid probabilities and parameter validation. Price convergence and Greek
 consistency are separate checks; agreement between methods alone is no proof
-of accuracy. Exercise frontiers and PSOR diagnostics await the PDE solver.
+of accuracy. The PDE solver below adds grid exercise frontiers and PSOR diagnostics.
+
+## Crank–Nicolson and PSOR
+
+```python
+from options_engine import FDConfig, fd_price
+
+result = fd_price(
+    100, 100, 1, 0.05, 0.20, option_type="put",
+    config=FDConfig(spatial_steps=400, time_steps=200, s_max=400),
+)
+print(result.price, result.max_residual, result.exercise_boundary[-1])
+```
+
+`fd_price` has the same financial inputs as BSM, plus `exercise_style`
+(`"american"` by default or `"european"`) and `config=FDConfig(...)`.
+The **PDE currently requires nonnegative rates and dividend yields**; negative
+values continue to work in BSM and CRR. Expiry/zero-volatility cases use the
+existing deterministic branch, without a PDE or artificial epsilon.
+
+The solver advances in remaining time on a uniform spot grid from payoff at
+tau=0. It uses central spatial differences, a Thomas tridiagonal solver for
+Europeans and projected SOR for Americans. Both old and new time-level boundary
+contributions are included. No dense matrix inverse is formed. Rannacher
+startup replaces the first two full time steps with four implicit Euler half
+steps; American obstacles are solved at each half step. `rannacher=False`
+disables startup smoothing explicitly.
+
+At S=0: calls are zero, European puts are K exp(-r tau), American puts are K.
+At Smax: puts are zero; European calls use the nonnegative asymptotic
+Smax exp(-q tau)-K exp(-r tau); American calls use its maximum with Smax-K.
+These upper boundaries approximate a truncated domain. Smax defaults to
+4 max(spot,strike) and must exceed both; this is a starting point, not an
+accuracy guarantee. Expand Smax while holding spatial resolution fixed.
+Spot prices use linear interpolation on the final grid.
+
+Where a central drift stencil loses nonnegative off-diagonals, a consistent
+one-sided drift stencil restores monotonicity of the spatial generator.
+`upwind_nodes` counts these nodes; their spatial order becomes first order.
+`cn_positive_rhs` records whether all explicit matrix coefficients were
+nonnegative at every time step. CN is not unconditionally positivity-preserving;
+Rannacher helps with the payoff kink but does not certify positivity on any mesh.
+
+PSOR controls: `omega=1.2`, `tolerance=1e-8`, `max_iterations=10000`.
+Both max update/K and `||min(v-g, Av-b)||inf/K` must meet tolerance.
+`ConvergenceError` propagates exhaustion; matrices without the required strict
+M-matrix diagonal dominance are rejected. `FDResult` includes the actual Smax,
+configuration, grid, values, total/max iterations and worst residual, update,
+obstacle and dual violations over all steps. A small algebraic residual is
+distinct from price convergence: spatial, temporal, domain and interpolation
+errors require separate checks.
+
+`exercise_boundary` contains `(remaining_years, contact_spot_or_None)` at each
+solved time level, excluding expiry. Only positive-payoff contacts within
+`K * max(10*tolerance, 1e-7)` are eligible; puts use the highest contact and calls
+the lowest. Contacts near a truncation boundary require domain checks. This
+grid estimate is not an interpolated free boundary or proof of smooth pasting.
+Deterministic branches return empty grids/boundaries and zero solver iterations.
+
+Reproduce the finite-difference analysis:
+
+```bash
+python examples/finite_difference_validation.py
+python -m pytest -q
+```
+
+Measured tables are in [docs/validation_finite_difference.md](docs/validation_finite_difference.md):
+American put/dividend-call comparisons with independently refined CRR pairs,
+four spatial refinements, four isolated temporal refinements and four domain
+expansions preserving dS. The data are synthetic and all experiments run offline.
+Runtime is O(M Nt) for European solves and O(M Nt I) for PSOR with I iterations;
+memory is O(M+Nt) including the boundary history, in standard-library Python.

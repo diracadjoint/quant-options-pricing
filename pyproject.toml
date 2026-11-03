@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "options-engine"
-version = "0.2.0"
-description = "European BSM prices and Greeks, and American CRR option pricing"
+version = "0.3.0"
+description = "BSM analytics, CRR trees and Crank-Nicolson/PSOR option pricing"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
