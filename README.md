@@ -235,3 +235,38 @@ four spatial refinements, four isolated temporal refinements and four domain
 expansions preserving dS. The data are synthetic and all experiments run offline.
 Runtime is O(M Nt) for European solves and O(M Nt I) for PSOR with I iterations;
 memory is O(M+Nt) including the boundary history, in standard-library Python.
+
+### Strengthened regression budgets
+
+The following budgets apply to the declared **K=100** validation cases, in
+absolute price/spot units. They replace the earlier FD price allowance of 0.10
+(`error/K < 1e-3`). They do not claim the same accuracy for arbitrary inputs or
+the default grid. All grids use Smax=400 unless stated otherwise.
+
+| Check | Configuration | Acceptance budget |
+| --- | --- | --- |
+| European prices vs BSM | M=640, Nt=200; declared ITM/ATM/OTM cases, including short maturity | Absolute price error <0.01 |
+| American cross-cases vs CRR1200 | M=400, Nt=200 | Absolute price difference <0.005 |
+| Core American put/dividend call vs both CRR2400/2401 | M=640 and 1280, Nt=200 | Absolute price difference <0.003 against each parity |
+| CRR reference stability | 1200→2400 and 1201→2401; finest even/odd pair | Each absolute change/spread <0.001 |
+| Boundary spatial stability at tau=.25,.5,1 | M=160,320,640,1280; Nt=200 | Coarse vs finest within 2 coarse cells; 640 vs 1280 within 0.625 |
+| Boundary temporal stability at the same dates | M=640; Nt=200→400 | Change <=0.625 (one spatial cell) |
+| Final boundary value matching | M=640/1280 | Payoff gap <=1e-5 |
+| Continuation-side boundary secant | M=640/1280 | Within 0.03 of -1 for put, +1 for call |
+| Dividend-call domain expansion | Smax=M=200,300,400,500; dS=1, Nt=200 | Price spread <1e-5 |
+
+Core put parameters are r=.05, q=0; core dividend-call parameters are r=.02,
+q=.10; both use S=K=100, tau=1, sigma=.20. Boundary comparisons are peer-grid
+stability checks, distinct from price convergence. No exact free-boundary
+reference is assumed, and monotonic improvement is not required of quantized
+contacts or secant slopes. The secant is only a smooth-pasting diagnostic;
+it does not add numerical Greek functionality.
+
+The domain study includes high yield (r=.02,q=.10), where exercise occurs
+before the upper boundary, and low yield (r=.05,q=.01), where the continuation
+boundary is approximate and no exercise contact is observed inside the tested
+domains. No contact inside Smax does not establish absence of a global exercise
+boundary. An additional Smax=150 report row demonstrates truncation sensitivity;
+the 1e-5 stability budget applies to 200..500. These studies preserve dS, time
+resolution, spot interpolation and solver tolerances during domain expansion.
+The PDE restriction to r,q>=0 is unchanged.

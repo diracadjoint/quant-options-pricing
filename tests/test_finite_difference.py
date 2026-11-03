@@ -21,9 +21,9 @@ def test_small_lcp_with_known_solution():
 ])
 def test_european_against_bsm(kind, spot, rate, yield_, vol, time):
     result = fd_price(spot, 100, time, rate, vol, yield_, kind,
-                      exercise_style="european", config=FDConfig(400, 200, 400))
+                      exercise_style="european", config=FDConfig(640, 200, 400))
     reference = bsm_price(spot, 100, time, rate, vol, yield_, kind)
-    assert abs(result.price-reference)/100 < 1e-3
+    assert abs(result.price-reference) < .01  # K=100; absolute price units
 
 
 def test_spatial_refinement():
@@ -43,7 +43,7 @@ def test_american_crr_and_complementarity(kind, spot, rate, yield_):
     result = fd_price(spot, 100, 1, rate, .2, yield_, kind, config=config)
     reference = crr_price(spot, 100, 1, rate, .2, yield_, kind, steps=1200)
     european = fd_price(spot, 100, 1, rate, .2, yield_, kind, exercise_style="european", config=config)
-    assert abs(result.price-reference.price)/100 < 1e-3
+    assert abs(result.price-reference.price) < .005  # K=100; protects millesimal accuracy
     assert result.price >= european.price-1e-5
     assert result.price >= max(spot-100 if kind == "call" else 100-spot, 0)-1e-10
     assert result.max_residual <= config.tolerance
