@@ -3,8 +3,9 @@
 Provides **European vanilla prices and analytic Greeks** under
 Black–Scholes–Merton (BSM), and **European/American CRR tree prices**, with
 constant continuous dividends. A Crank–Nicolson/PSOR finite-difference solver
-provides an independent European/American price comparison. American numerical
-Greeks and portfolio risk remain future work.
+provides an independent European/American price comparison. Bump-and-reprice
+provides numerical European/American Greeks with explicit stability diagnostics.
+Portfolio scenarios and P&L remain future work.
 
 ## Install and run
 
@@ -270,3 +271,100 @@ boundary. An additional Smax=150 report row demonstrates truncation sensitivity;
 the 1e-5 stability budget applies to 200..500. These studies preserve dS, time
 resolution, spot interpolation and solver tolerances during domain expansion.
 The PDE restriction to r,q>=0 is unchanged.
+
+## American numerical Greeks
+
+```python
+from options_engine import Bumps, FDConfig, numerical_greeks
+
+risk = numerical_greeks(
+    100, 100, 1, 0.05, 0.20, option_type="put",
+    bumps=Bumps(spot=2.5, volatility=0.005, rate=0.001, maturity=0.01),
+    fd_config=FDConfig(320, 100, 400, tolerance=1e-10),
+)
+print(risk.delta.value, risk.gamma.value, risk.gamma.flags)
+```
+
+`numerical_greeks` shares the BSM financial arguments. It defaults to American
+exercise and `method="fd"`; `method="crr", tree_steps=...` selects independent
+tree repricing. `exercise_style="european"` supplies an analytic-Greek control.
+`Bumps` fields are **absolute** spot/volatility/rate/remaining-year changes.
+Optional fields default to max(1% of spot,0.01), max(1% of volatility,1e-4),
+max(1% of absolute rate,1e-4), and max(1% of maturity,1/365), respectively.
+These are starting scales, not automatic accuracy choices. In particular,
+default spot bumps can be smaller than the default FD cell and are flagged.
+Choose explicit bumps and verify stability before interpreting a Greek.
+
+The result contains `.price`, `.delta`, `.gamma`, `.vega`, `.theta`, `.rho`,
+actual `.bumps`, method, style, FD configuration or tree steps, and all
+`.repricings`. Each sensitivity carries `.value`, `.bump`, `.stencil`, `.flags`.
+Each repricing records parameter, shift, price, approximate exercise activity,
+and FD residual/iteration count (None for CRR). Flags are hazard indicators;
+their absence does not certify stability. Solver failures propagate immediately.
+
+At an interior parameter x, first differences use `(V(x+h)-V(x-h))/(2h)`;
+Gamma uses `(V(S+h)-2V(S)+V(S-h))/h²`. Theta reverses the sign of the remaining
+maturity derivative, per calendar year. Vega/Rho are per absolute unit; divide
+by 100 for one percentage point (Rho by 10,000 for one bp). q remains fixed.
+When a central stencil leaves a lower domain boundary, a second-order forward
+stencil replaces it: `(-3V0+4V1-V2)/(2h)` for first differences and
+`(2V0-5V1+4V2-V3)/h²` for Gamma. Spot must stay positive; volatility and maturity
+nonnegative; the FD rate domain is nonnegative, whereas CRR rates may be negative.
+At expiry, all Greek values are explicitly None, with an unavailable stencil;
+the price remains the payoff. At zero volatility, numerical boundary estimates
+carry an explicit nonclassical-derivative warning. Unrepresentable or nonpositive
+bumps are rejected; no arbitrary epsilon is substituted.
+
+Every distinct bumped input solves optimal exercise afresh. Base and spot
+repricings are cached within the call so Delta/Gamma share the same prices.
+For FD, Smax (including its default) is resolved **once at the original spot**
+and frozen with M, Nt, Rannacher and PSOR controls for every repricing. A spot
+bump leaving that domain raises an error instead of silently moving the mesh.
+Maturity bumps keep Nt fixed, so the temporal step changes with remaining years.
+CRR keeps the number of steps fixed and validates probability on every bump.
+
+FD spot interpolation is piecewise linear. A tiny spot bump can stay inside one
+cell and produce Gamma=0, or straddle a node and amplify a slope jump. Any
+spot bump smaller than dS receives an `interpolation-limited` flag. Larger bumps
+still require refinement checks; they also introduce differentiation bias.
+Changing exercise activity across repricings produces a separate flag. The
+activity diagnostic compares positive payoff to price within 1e-7 K, so it is
+approximate, particularly near contact. No analytic American derivative,
+universal smooth Gamma or global sensitivity sign is claimed near the boundary.
+
+### Reproduce separate sensitivity studies
+
+```bash
+python examples/american_greeks_validation.py
+python -m pytest -q
+```
+
+[docs/validation_american_greeks.md](docs/validation_american_greeks.md) reports:
+
+- Bump scales 1/4 (interpolation stress), 1/2, 1 and 2 on fixed M=320, Nt=100.
+- A finer bump plateau on fixed M=640, Nt=100, using spot bumps 0.625/1.25/2.5;
+  other base bumps retain their original scales.
+- M=160,320,640 with Nt=100 and all absolute bumps fixed.
+- Nt=50,100,200 with M=320 and all absolute bumps fixed.
+- Independent CRR800/801/1600/1601 estimates, inspecting parity separately.
+- A near-boundary put at S=81, in addition to continuation benchmarks at S=100.
+
+All use K=100, tau=1, sigma=.20, Smax=400 and PSOR tolerance=1e-10. Put parameters
+are r=.05,q=0; dividend-call parameters r=.02,q=.10. For the two S=100 benchmarks,
+regression budgets for the finer bump plateau, spatial change 320→640 and
+temporal spread 50/100/200 are: Delta 0.003, Gamma 0.001, Vega 0.20, Theta 0.05,
+Rho 0.20, in the units above. These empirical budgets are not imposed near the
+exercise frontier. The wider put spot-bump range 1.25/2.5/5 produced Delta
+spread 0.00338, exceeding the declared 0.003 budget. This result is retained
+in the report; the tolerance was not relaxed. Tests additionally compare Delta
+dispersion in the refined and original setups. That comparison changes both
+mesh and bump range and is not used to attribute improvement to either; the
+per-axis studies keep the other choices fixed. Separate tests compare European numerical Greeks with BSM,
+non-dividend American calls with European analytic Greeks, and deep-exercise
+puts with local payoff sensitivities. The intentionally tiny-bump test verifies
+that interpolation-induced zero Gamma is flagged.
+
+Study bump error at a fixed mesh **before** refining the mesh with fixed bumps;
+do not change both together and attribute the result to one source. No PSOR
+residual is interpreted as a Greek error bound. Portfolio P&L is not part of
+this module.

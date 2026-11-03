@@ -4,6 +4,8 @@ from .analytic import Greeks, GreeksUnavailableError, bsm_greeks, bsm_price
 from .binomial import BinomialResult, crr_price
 from .finite_difference import FDConfig, FDResult, fd_price
 from .psor import ConvergenceError
+from .risk import Bumps, NumericalGreeks, Repricing, Sensitivity, numerical_greeks
 
 __all__ = ["bsm_price", "bsm_greeks", "Greeks", "GreeksUnavailableError",
-           "crr_price", "BinomialResult", "fd_price", "FDConfig", "FDResult", "ConvergenceError"]
+           "crr_price", "BinomialResult", "fd_price", "FDConfig", "FDResult", "ConvergenceError",
+           "Bumps", "NumericalGreeks", "Repricing", "Sensitivity", "numerical_greeks"]
