@@ -20,14 +20,14 @@ The average of the finest pair is a comparison reference, not an exact price.
 
 | Case | M | FD | Difference/K vs CRR pair | Max LCP residual | Dual violation | Iterations | Boundary S* | Seconds |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| put | 80 | 6.01646445 | 0.000741 | 1.53e-09 | 1.48e-09 | 1500 | 80.0 | 0.1428 |
-| put | 160 | 6.07254270 | 0.00018 | 2.16e-09 | 2.16e-09 | 1282 | 80.0 | 0.2668 |
-| put | 320 | 6.08554158 | 4.98e-05 | 2.55e-09 | 2.55e-09 | 1153 | 81.25 | 0.5015 |
-| put | 640 | 6.08883942 | 1.68e-05 | 9.99e-09 | 9.99e-09 | 2844 | 80.625 | 2.1126 |
-| call | 80 | 5.15170679 | 0.000736 | 1.56e-09 | 1.55e-09 | 1498 | 120.0 | 0.1265 |
-| call | 160 | 5.20725413 | 0.000181 | 2.02e-09 | 2.02e-09 | 1433 | 117.5 | 0.2434 |
-| call | 320 | 5.22058505 | 4.75e-05 | 5.97e-09 | 4.9e-09 | 1571 | 117.5 | 0.5848 |
-| call | 640 | 5.22387677 | 1.45e-05 | 8.07e-09 | 8.07e-09 | 2361 | 118.125 | 1.6048 |
+| put | 80 | 6.01646445 | 0.000741 | 1.53e-09 | 1.48e-09 | 1500 | 80.0 | 0.1354 |
+| put | 160 | 6.07254270 | 0.00018 | 2.16e-09 | 2.16e-09 | 1282 | 80.0 | 0.2180 |
+| put | 320 | 6.08554158 | 4.98e-05 | 2.55e-09 | 2.55e-09 | 1153 | 81.25 | 0.4922 |
+| put | 640 | 6.08883942 | 1.68e-05 | 9.99e-09 | 9.99e-09 | 2844 | 80.625 | 2.0573 |
+| call | 80 | 5.15170679 | 0.000736 | 1.56e-09 | 1.55e-09 | 1498 | 120.0 | 0.1642 |
+| call | 160 | 5.20725413 | 0.000181 | 2.02e-09 | 2.02e-09 | 1433 | 117.5 | 0.2168 |
+| call | 320 | 5.22058505 | 4.75e-05 | 5.97e-09 | 4.9e-09 | 1571 | 117.5 | 0.5393 |
+| call | 640 | 5.22387677 | 1.45e-05 | 8.07e-09 | 8.07e-09 | 2361 | 118.125 | 1.7287 |
 
 Boundary contacts exclude zero-payoff nodes; S* is a grid estimate at remaining time 1 year.
 It is quantized by mesh spacing; no exact smooth-pasting claim follows from contact.
@@ -55,9 +55,68 @@ American put, r=.05, q=0; fixed dS=1 and Nt=200; increase Smax and M together.
 | 400 | 400 | 6.08715457 | 3.77e-09 |
 | 500 | 500 | 6.08715457 | 3.77e-09 |
 
+## Exercise boundary validation, separate from price
+
+Fixed Smax=400, Nt=200; samples at remaining years .25, .5 and 1.
+The finest grid is a peer comparison, not an exact free-boundary reference.
+Budget: each coarse level within two of its cells of M=1280; M=640 vs 1280
+within one M=640 cell (0.625) at all sampled times. No monotonic convergence is imposed.
+
+| Case | M | dS | S*(.25) | S*(.5) | S*(1) | Continuation secant at tau=1 | Target slope |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| put | 160 | 2.5 | 87.5 | 82.5 | 80.0 | -0.98784134 | -1 |
+| put | 320 | 1.25 | 86.25 | 83.75 | 81.25 | -0.96198259 | -1 |
+| put | 640 | 0.625 | 86.875 | 83.75 | 80.625 | -0.99779330 | -1 |
+| put | 1280 | 0.3125 | 86.875 | 84.0625 | 80.9375 | -0.99169700 | -1 |
+| call | 160 | 2.5 | 112.5 | 115.0 | 117.5 | 0.94183924 | 1 |
+| call | 320 | 1.25 | 112.5 | 115.0 | 117.5 | 0.96180681 | 1 |
+| call | 640 | 0.625 | 112.5 | 115.0 | 118.125 | 0.99515390 | 1 |
+| call | 1280 | 0.3125 | 112.5 | 115.3125 | 117.8125 | 0.98929498 | 1 |
+
+Value-matching budget at final contact: 1e-5 price units. Continuation-side
+secant slope budget: 0.03 from -1 (put) or +1 (call) at M=640/1280.
+This is a smooth-pasting diagnostic; slopes can oscillate with contact quantization.
+It does not constitute convergence to an independently known exact frontier.
+
+### Temporal stability of the frontier
+
+Fixed M=640, Smax=400; compare Nt=200 and 400; budget one cell=0.625.
+
+| Case | Max contact change across sampled dates | Budget |
+| --- | ---: | ---: |
+| put | 0.0 | 0.625 |
+| call | 0.0 | 0.625 |
+
+## Dividend-call domain expansion at fixed resolution
+
+Fixed dS=1, Nt=200, contact tolerance=1e-5 price units; expand Smax and M together.
+High yield tests exercise before the upper boundary. Low yield tests the approximate
+continuation boundary. An extra Smax=150 row shows truncation effects below the tested
+domain-stability range 200..500. Budget: price spread <1e-5 over 200..500.
+
+| r | q | Smax=M | Price | S*(1), None means no grid contact |
+| ---: | ---: | ---: | ---: | --- |
+| 0.02 | 0.1 | 150 | 5.2221631728 | 118.0 |
+| 0.02 | 0.1 | 200 | 5.2221631728 | 118.0 |
+| 0.02 | 0.1 | 300 | 5.2221631728 | 118.0 |
+| 0.02 | 0.1 | 400 | 5.2221631728 | 118.0 |
+| 0.02 | 0.1 | 500 | 5.2221631728 | 118.0 |
+| 0.05 | 0.01 | 150 | 9.8237447748 | None |
+| 0.05 | 0.01 | 200 | 9.8238438809 | None |
+| 0.05 | 0.01 | 300 | 9.8238440162 | None |
+| 0.05 | 0.01 | 400 | 9.8238440164 | None |
+| 0.05 | 0.01 | 500 | 9.8238440164 | None |
+
+No grid contact at low yield does not imply absence of an exercise boundary beyond Smax.
+The smaller-domain row illustrates why local mesh accuracy alone is insufficient.
+
+
 ## Interpretation and limits
 
-Price target is absolute difference/K < 1e-3 on declared benchmarks; LCP target is 1e-8.
+Updated K=100 budgets: European absolute error <0.01 at M=640; American cross-cases <0.005 at M=400.
+Core American benchmarks at M=640 and 1280 require absolute difference <0.003 against BOTH CRR2400 and CRR2401.
+Each CRR parity refinement and finest parity spread must be <0.001; the reference is not treated as exact.
+LCP target remains 1e-8 scaled by strike; these price budgets are benchmark-specific.
 These measure different errors. A small algebraic residual does not bound truncation,
 interpolation or discretization error. Agreement with CRR alone does not prove exactness.
 CN can have negative RHS coefficients despite Rannacher; check positivity/oscillations under refinement.
