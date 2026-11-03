@@ -1,8 +1,9 @@
 # Options Pricing and Risk Engine
 
-The first implementation step provides **European vanilla call and put prices**
-under Black–Scholes–Merton (BSM), including constant continuous dividends.
-Greeks, American exercise, numerical solvers and portfolio risk are future work.
+Provides **European vanilla prices and analytic Greeks** under
+Black–Scholes–Merton (BSM), and **European/American CRR tree prices**, with
+constant continuous dividends. Finite differences, PSOR, American numerical
+Greeks and portfolio risk remain future work.
 
 ## Install and run
 
@@ -96,3 +97,69 @@ accuracy for tiny prices, especially near expiry or zero volatility. Negative
 roundoff in a price is floored at zero. Overflow and nonfinite intermediates,
 or a positive total volatility that underflows to zero, raise `ValueError` with
 a floating-point range message. Arbitrary precision is outside this step's scope.
+
+## European analytic Greeks
+
+```python
+from options_engine import bsm_greeks
+
+g = bsm_greeks(100, 100, 1, 0.05, 0.20, dividend_yield=0.02)
+print(g.delta, g.gamma, g.vega, g.theta, g.rho)
+```
+
+The signature matches `bsm_price` and returns an immutable `Greeks` object.
+Delta/Gamma differentiate spot. Vega and Rho are per absolute unit of volatility
+and rate: divide by 100 for one percentage point, or Rho by 10,000 for one bp.
+Theta is the calendar-time derivative, minus the derivative in remaining years;
+divide by 365 for a daily display. `GreeksUnavailableError` explicitly reports
+zero maturity or volatility: this API supplies interior formulas only, including
+when a particular boundary limit could be defined separately. It never silently
+returns zero for unavailable sensitivities. These are European Greeks.
+
+## American exercise via CRR
+
+```python
+from options_engine import crr_price
+
+r = crr_price(100, 100, 1, 0.05, 0.20, option_type="put", steps=800)
+print(r.price, r.european_price, r.early_exercise_premium)
+```
+
+`crr_price` has the same financial inputs, plus keyword-only `steps=500` and
+`exercise_style="american"` (or `"european"`). Returns `BinomialResult` with
+price, European control on the **same lattice**, step count, risk-neutral
+probability and method. The premium is the difference from that tree control;
+the report separately compares the European control against analytic BSM.
+American values use the maximum of continuation and intrinsic value at each
+node. Probability outside [0,1] raises an error asking for more steps; it is not
+clipped. The implementation is independent of the analytic pricing formula.
+
+At zero volatility, maximize discounted payoff over continuous exercise time,
+checking endpoints and an interior stationary point when it exists. This is
+not a zero-width tree. Negative rates/yields are supported; familiar upper
+bounds such as American put <= strike require nonnegative rates and are not
+asserted universally. At expiry return payoff.
+
+CRR uses O(N) memory and O(N²) runtime in pure Python. Exercise at lattice dates
+approximates continuous American exercise. No single run certifies convergence:
+refine steps and inspect even/odd sequences separately. Tail nodes can overflow
+for extreme parameters or very large trees, producing `ValueError`. The
+`probability` field is None and `method` is `"deterministic"` in boundary branches.
+
+## Reproduce the analysis
+
+```bash
+python examples/greeks_and_american.py
+python -m pytest -q
+```
+
+The script prints the benchmark inputs, Greek units, finite-difference checks,
+and four refinement levels for both even and odd trees. The measured output is
+saved in [docs/validation_greeks_american.md](docs/validation_greeks_american.md).
+All inputs are synthetic; there is no market-data feed. Greek tests additionally
+check call/put identities and the BSM PDE residual. American tests cover a
+standard put reference, no early exercise for a non-dividend call with
+nonnegative rates, dividend calls, obstacles, deterministic interior exercise,
+invalid probabilities and parameter validation. Price convergence and Greek
+consistency are separate checks; agreement between methods alone is no proof
+of accuracy. Exercise frontiers and PSOR diagnostics await the PDE solver.
