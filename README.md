@@ -5,7 +5,8 @@ Black–Scholes–Merton (BSM), and **European/American CRR tree prices**, with
 constant continuous dividends. A Crank–Nicolson/PSOR finite-difference solver
 provides an independent European/American price comparison. Bump-and-reprice
 provides numerical European/American Greeks with explicit stability diagnostics.
-Portfolio scenarios and P&L remain future work.
+Signed portfolios aggregate value/risk and support shock scenarios, cash
+settlement and mark-to-market P&L.
 
 ## Install and run
 
@@ -366,5 +367,135 @@ that interpolation-induced zero Gamma is flagged.
 
 Study bump error at a fixed mesh **before** refining the mesh with fixed bumps;
 do not change both together and attribute the result to one source. No PSOR
-residual is interpreted as a Greek error bound. Portfolio P&L is not part of
-this module.
+residual is interpreted as a Greek error bound. Portfolio accounting and P&L
+are provided separately by the module below.
+
+## Signed positions and portfolio risk
+
+```python
+from options_engine import (
+    Market, OptionContract, Portfolio, Position, Scenario,
+    value_portfolio, scenario_pnl,
+)
+
+market = Market(spot=100, volatility=0.20, rate=0.05, dividend_yield=0.02)
+book = Portfolio((
+    Position(OptionContract(100, 1, "call"), quantity=2, multiplier=100),
+    Position(OptionContract(95, 0.75, "put"), quantity=-1, multiplier=100),
+), cash=-1000)
+initial = value_portfolio(book, market)
+print(initial.total_value, initial.greeks.delta, initial.greeks.gamma)
+
+result = scenario_pnl(
+    book, market,
+    Scenario(spot_change=-5, volatility_change=0.02,
+             rate_change=0.001, elapsed=30/365),
+    initial=initial,
+)
+print(result.exact_pnl, result.second_order_pnl, result.second_order_residual)
+```
+
+The library currently models **one underlying and one currency**. `OptionContract`
+contains strike, remaining years, call/put type and exercise style. `Position`
+adds signed finite contract quantity, a strictly positive contractual multiplier,
+method (`"bsm"`, `"fd"`, `"crr"`), numerical controls/bumps and an optional label.
+Positive quantity is long, negative is short; finite fractional quantities are
+allowed for analytical baskets. `quantity * multiplier` gives signed underlying
+units. BSM positions must be European; American positions explicitly select FD
+or CRR. `Market` is shared by the portfolio; q is fixed across scenarios.
+
+Value and every option Greek aggregate as `sum(quantity * multiplier * unit_value)`.
+Cash is included in total value; it has zero current option Greeks, with future
+carry accounted for separately. The aggregate includes Delta, Gamma, Vega, annual
+calendar Theta and Rho in the same units as the pricing/risk modules. Numerical
+risk diagnostics and flags are retained on each `PositionValue.numerical_risk`.
+FD Greeks use the chosen configuration/bumps; their aggregation does not improve
+their accuracy or certify stability. Zero quantities skip pricing and carry zero
+exposure. Identical contracts with identical pricing/risk controls share unit
+calculations; exact offsetting units cancel even when unit Greeks are unavailable.
+Other unavailable components propagate None instead of silently becoming zero.
+
+`Portfolio.cash` is a supplied nominal cash balance and may be negative (borrowing).
+Purchase/sale premiums are **not automatically booked**. To model initial funding,
+supply the cash balance explicitly. Reported P&L measures the change from current
+portfolio valuation, not historical trade profit. `value_portfolio(...,
+compute_greeks=False)` supplies price-only valuation; exact scenarios still work,
+while approximations needing omitted Greeks become unavailable. Reusing
+`initial=...` avoids recalculating unchanged baseline risk; it must match the
+portfolio and market.
+
+### Scenario and expiry conventions
+
+All shocks are **absolute**, not percentages of their starting values:
+spot_change=5 adds five currency units; volatility_change=0.01 adds one volatility
+percentage point; rate_change=0.001 adds ten bp. `elapsed` is nonnegative years;
+dates, calendars and trading-day conventions are outside this API. Shocked inputs
+must remain in the selected solver's domain; live FD positions retain r,q>=0.
+
+The stress path is explicit: spot, volatility and rate shocks occur immediately
+at time zero, then the shocked spot stays flat through the horizon. The shocked
+rate and volatility are constant and q is unchanged. This convention specifies
+spot at every intermediate expiry; it is not a simulated GBM path or an implicit
+assumption that an unobserved expiry spot equals a terminal-only observation.
+
+For each nonzero position with initial remaining maturity tau and horizon h:
+
+- If h<tau, reprice the remaining contract at tau-h with shocked inputs.
+- If h>=tau, remove the option and cash-settle at signed units times payoff
+  using the specified spot at tau. The principal may be positive or negative.
+- Accrue that settlement independently from tau to h, multiplying it by
+  `exp(shocked_rate * (h-tau))`. At exactly expiry there is no post-settlement carry.
+- An option already at tau=0 settles at the **original** spot before the shock;
+  its Greek exposure becomes zero and its proceeds/payments accrue from time zero.
+
+Original cash, including negative borrowing, accrues from time zero to h at the
+same continuously compounded scenario rate. The horizon total is live option
+value plus original cash future value plus all signed settlement future values.
+No expired option value is counted twice. `ScenarioResult` exposes each of these
+components and a `ScenarioLeg` ledger with status, remaining time, expiry time,
+settlement principal and horizon contribution. Inputs are immutable; no trade or
+cash transaction is sent anywhere.
+
+American exercise rights are priced optimally at valuation endpoints, but the
+scenario accounting policy holds positions to horizon/expiry: **no intervening
+early-exercise or assignment transaction is simulated**. Thus this stress P&L
+is not a realized optimal-exercise path simulation. Settlement is in cash, not
+physical delivery; there are no underlying stock positions, hedge trades,
+transaction costs, margin, tax or external cash flows. q affects option prices;
+option holders do not receive cash dividends on the underlying in this ledger.
+
+### Local P&L comparison
+
+Before expiry, the first-order option approximation is
+`Delta*dS + Vega*dsigma + Rho*dr + Theta*h`. Both approximations additionally
+include exact carry on the initial effective cash balance. The second-order
+field adds `Gamma*dS²/2`: it is **second order in spot only**, not a full
+multivariate Hessian expansion. Cross terms and higher orders are omitted.
+Residuals are full revaluation P&L minus the corresponding approximation.
+`exact_pnl` means full repricing rather than Taylor; it still inherits model
+assumptions, discretization and solver error.
+Large shocks, changes in exercise region, interpolation and numerical-Greek
+noise can create material residuals. Adding Gamma need not improve every
+combined scenario.
+
+When a nonzero live leg reaches or crosses expiry, the initial local Greek
+expansion is explicitly unavailable (None), while payoff/cash P&L remains fully
+defined. Unknown Greeks are required only for nonzero shocks; known zero shocks
+do not manufacture unavailable contributions. Already-settled cash accrues
+normally. Each FD leg's original Smax, M, Nt and solver controls remain fixed
+through scenarios, so spot shocks do not silently change the spatial domain.
+A shock leaving that domain raises the pricing error.
+
+Reproduce the mixed European/American portfolio experiment:
+
+```bash
+python examples/portfolio_validation.py
+python -m pytest -q
+```
+
+[docs/validation_portfolio.md](docs/validation_portfolio.md) records signed
+holdings, aggregate risk, isolated/combined shocks, approximation residuals and
+an auditable cash ledger at/beyond multiple expiries. All data are synthetic and
+the experiment runs offline. Tests separately verify signed scaling, exact
+offsets, cash financing, every shock dimension, time direction, multiple expiry
+flows, already-due settlement, frozen FD domains and unavailable risk handling.
