@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "options-engine"
-version = "0.5.0"
-description = "Option pricing, numerical risk, signed portfolios and scenario P&L"
+version = "0.6.0"
+description = "Option pricing, portfolio risk and self-financing Delta hedge demonstrations"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []

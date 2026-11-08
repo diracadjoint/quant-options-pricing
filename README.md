@@ -7,6 +7,8 @@ provides an independent European/American price comparison. Bump-and-reprice
 provides numerical European/American Greeks with explicit stability diagnostics.
 Signed portfolios aggregate value/risk and support shock scenarios, cash
 settlement and mark-to-market P&L.
+Self-financing static/dynamic Delta hedges add stock inventory and an auditable
+cash, dividend and financing ledger on user-supplied deterministic paths.
 
 ## Install and run
 
@@ -499,3 +501,166 @@ an auditable cash ledger at/beyond multiple expiries. All data are synthetic and
 the experiment runs offline. Tests separately verify signed scaling, exact
 offsets, cash financing, every shock dimension, time direction, multiple expiry
 flows, already-due settlement, frozen FD domains and unavailable risk handling.
+
+## Static and dynamic self-financing Delta hedges
+
+```python
+from options_engine import (
+    Market, OptionContract, Portfolio, Position, simulate_delta_hedge,
+)
+
+market = Market(100, 0.20, 0.05, 0.02)
+book = Portfolio((Position(OptionContract(100, 1), quantity=-1, multiplier=100),))
+path = [(0, 100), (0.25, 110), (0.5, 95), (0.75, 105), (1, 120)]
+
+results = {
+    strategy: simulate_delta_hedge(
+        book, market, path, strategy=strategy, initial_wealth=1000,
+    )
+    for strategy in ("unhedged", "static", "dynamic")
+}
+print(results["dynamic"].final_wealth, results["dynamic"].excess_wealth)
+for row in results["dynamic"].history:
+    print(row.time, row.delta_used, row.shares_after, row.cash, row.wealth)
+```
+
+`simulate_delta_hedge(portfolio, market, path, *, strategy="dynamic",
+rebalance_every=1, initial_wealth=None, warning_policy="raise")` uses the existing
+contract, position, multiplier, price and risk representations. Every price/risk
+evaluation retains the same volatility, continuously compounded rate and
+continuous dividend yield from `market`; only spot and remaining maturity change.
+BSM European positions are the primary demonstration. Existing FD/CRR positions,
+including Americans, are also supported without modifying their public interfaces.
+
+### Path and trading schedule
+
+Supply a sequence of `(time, spot)` pairs or `PathPoint` objects. Times are finite
+years from valuation, begin at zero and increase strictly; at least two points
+are required. Spots are finite and strictly positive, with the first equal to
+`market.spot`. There are no dates/calendars, random paths or market-data calls.
+The underlying is piecewise linear between supplied observations. Every nonzero
+position expiry inside the path is inserted as an event, using that interpolated
+spot for payoff settlement rather than a terminal-only price assumption.
+
+- `unhedged`: hold zero shares.
+- `static`: set shares to minus the aggregate active option Delta at opening,
+  then keep this initial quantity fixed until all options expire or the horizon.
+- `dynamic`: open the same hedge and rebalance at every kth original observation
+  (`rebalance_every=k`), plus mandatory expiry events for the remaining portfolio.
+
+Stock closes when all options have expired, or at final horizon. A shorter path
+does not force a fictitious option expiry: live options remain marked, with a
+history warning. Partial expiries remove those contracts; dynamic hedges update
+to the remaining exposure even if the expiry falls between scheduled trades.
+Static aggregate inventory remains fixed until the last expiry/horizon. After
+the last expiry only cash remains and continues accruing through the path.
+Prices and Greeks are refreshed at **every observation/event**, including
+static/sparse holds. Only decision times use the Delta to select inventory.
+
+### Opening funding and self-financing identity
+
+The option positions may be signed, multipliers remain positive, and shares may
+be fractional. At a Delta decision, `H = -aggregate_option_delta` in underlying
+units. Portfolio cash has no spot Delta.
+
+An explicit `initial_wealth=W0` sets the total opening endowment. Initial cash
+before stock is `W0 - live_option_value`; buying/selling the target shares then
+gives `C0 = W0 - live_option_value - H0*S0`. This records the fair-value financing
+of both options and stock, including short-option premium and borrowing. If
+`initial_wealth` is omitted, W0 defaults to the original option-book NAV including
+`Portfolio.cash` and any already-due payoff; existing cash is therefore preserved.
+An explicit endowment overrides this default NAV; the initialization difference
+is returned as `opening_cash_adjustment`, rather than being silently discarded.
+This is opening financing only, not an external flow injected during the hedge.
+
+For each later trade, `trade_cost = (H_new-H_old)*S` and
+`cash_after = cash_before-trade_cost`. Purchases use cash and sales add cash.
+Wealth is always `W = live_option_value + H*S + cash`. The before/after trade
+wealth is recorded and must agree up to floating-point rounding; a transaction
+does not itself create profit. There are no fees, spread, margin, taxes, stock
+rounding, stock-borrow fee, funding spread or external contributions after opening.
+
+### Financing, dividends and expiry order
+
+Shares remain fixed between events. The PREVIOUS cash balance earns or pays
+`C_old * expm1(r*dt)`. With constant r, this is exact continuous compounding for
+that old balance, including negative borrowing and negative rates where the
+chosen option solver permits them.
+
+Stock dividends over the interval are approximated by
+`q * H_old * (S_left+S_right)/2 * dt`, credited to cash at the RIGHT endpoint.
+The nominal integral is exact for a linear spot segment and fixed shares;
+depositing the stream only at the endpoint omits intra-interval interest on
+dividends. Subsequent intervals finance the resulting cash normally. Short
+shares pay dividends when q is positive. Dividend cash is not reinvested into
+additional shares automatically. To compare trading frequency fairly, keep the
+observation grid fixed and change only `rebalance_every`; resampling also changes
+this discrete dividend-credit approximation.
+
+At an expiry event, after interval interest/dividends, cash-settle each option's
+signed units times payoff at the path spot, remove it, then trade stock. Already-
+due options settle once at opening. If all options have expired, close all shares
+and send sale proceeds or short-cover costs to cash. No option mark or stock
+liquidation proceeds are counted twice. The end state is cash only when the
+path includes all expiries; otherwise remaining options are still marked.
+
+American policy is **hold to expiry, no early exercise or assignment**. Rights
+and numerical Greeks are recomputed at each observation with the existing
+optimal-exercise pricers, but the ledger does not simulate exercising those
+rights or being assigned before expiry. Such a path strategy needs separate
+rules. FD Smax, spatial/time interval counts and solver controls are resolved
+from the original spot and frozen throughout; a path/bump leaving the domain
+raises rather than silently moving it. Explicit `Bumps` remain unchanged;
+omitted bump fields use the risk module's state-dependent defaults at each
+observation. Actual bumps/stencils remain in each numerical-risk snapshot.
+Solver failures propagate.
+
+### Delta quality policy and history
+
+An unavailable aggregate Delta raises `DeltaUnavailableError` at a requested
+hedge decision under **both** policies. It is never replaced by zero. If any
+portfolio risk warning is present at a decision, default `warning_policy="raise"`
+raises `DeltaWarningError`. This deliberately conservative policy covers all
+reported Greek warnings, not just warnings about Delta. `"allow"` permits finite
+Delta with warnings, sets `used_warned_delta=True`, and preserves the flags and
+the original numerical repricing diagnostics. Exceptions expose `.time` and
+`.valuation` for inspection. No convergence failure can be bypassed with `allow`.
+Holds and forced liquidation do not use a new Delta; warnings are still retained
+but do not cause warning-policy rejection when no Delta-based decision is made.
+
+Each immutable `HedgeRow` records time, spot, action, live option mark, Delta
+actually used, shares before/after, trade cost, signed dividends, financing,
+settlement cash/details, cash before/after, wealth before/after, warnings and a
+full `PortfolioValue` snapshot. `delta_used=None` means **not used**, as on a
+static hold or liquidation; the observed aggregate Delta remains available in
+`row.valuation.greeks.delta`. Empty active portfolios have known zero exposure;
+no singular at-expiry Greek formula is evaluated.
+
+Interval attribution is
+`change_in_wealth = option_pnl + stock_pnl + dividends + financing`, where
+`option_pnl = current_live_mark - previous_live_mark + settlement_cash` and
+`stock_pnl = old_shares * (new_spot-old_spot)`. `rebalance_error` and
+`reconciliation_error` expose numerical discrepancies instead of hiding them.
+Opening interval gains are zero. `HedgeResult` aggregates these components,
+returns the entire history, final wealth, P&L, initial wealth capitalized as
+`W0*exp(r*T)` and excess wealth over that benchmark. Ledger identities do not
+certify Greek/model accuracy or hedging performance.
+
+### Reproduce hedge comparisons
+
+```bash
+python examples/delta_hedging_validation.py
+python -m pytest tests/test_hedging.py -q
+python -m pytest -q
+```
+
+[docs/validation_delta_hedging.md](docs/validation_delta_hedging.md) measures rise,
+fall and reversal paths for a short European call, with the same initial wealth
+1000 and 65 observations. It compares unhedged/static strategies and dynamic
+rebalancing every 16, 4 and 1 observations, then audits a full coarse-path ledger
+and an American FD mixed portfolio with deliberately signaled numerical risk.
+The deterministic paths are not a statistical experiment: no monotonic hedging
+improvement on every individual path is required. Refining trades along a smooth
+deterministic path also does not reproduce BSM diffusion quadratic variation;
+excess wealth need not converge to zero. This is a financing/risk demonstration,
+not a proof of replication.
