@@ -6,7 +6,7 @@ from options_engine import (Bumps, FDConfig, Market, OptionContract, Portfolio, 
                             Scenario, scenario_pnl, value_portfolio)
 
 
-def main() -> None:
+def demo_inputs():
     market = Market(100, .20, .05, .02)
     book = Portfolio((
         Position(OptionContract(100, 1), 2, 100, label="long European call"),
@@ -15,6 +15,17 @@ def main() -> None:
                  FDConfig(320, 100, 400, tolerance=1e-10), bumps=Bumps(2.5, .005, .001, .005),
                  label="long American put"),
     ), cash=-1500)
+    scenarios = [Scenario(label="unchanged"), Scenario(.5, label="spot only"),
+        Scenario(volatility_change=.005, label="volatility only"), Scenario(rate_change=.001, label="rate only"),
+        Scenario(elapsed=1/365, label="one calendar day"), Scenario(.5, .005, .001, 1/365, "small combined"),
+        Scenario(-15, .05, .01, .1, "large combined"), Scenario(-10, elapsed=.25, label="American expiry"),
+        Scenario(-10, elapsed=.5, label="after American expiry"), Scenario(-10, elapsed=.75, label="second expiry"),
+        Scenario(10, elapsed=1.25, label="after all expiries")]
+    return market, book, scenarios
+
+
+def main() -> None:
+    market, book, scenarios = demo_inputs()
     initial = value_portfolio(book, market)
     print("# Signed option portfolio and scenario P&L\n")
     print(f"Python {platform.python_version()}; {platform.system()} {platform.machine()}. Synthetic inputs only.")
@@ -41,12 +52,6 @@ def main() -> None:
     print("Residual=full revaluation P&L minus approximation. N/A means expiry makes the local expansion inapplicable.\n")
     print("| Scenario | dS | dsigma | dr | Elapsed | Exact P&L | First order | Second order | Second residual |")
     print("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
-    scenarios = [Scenario(label="unchanged"), Scenario(.5, label="spot only"),
-        Scenario(volatility_change=.005, label="volatility only"), Scenario(rate_change=.001, label="rate only"),
-        Scenario(elapsed=1/365, label="one calendar day"), Scenario(.5, .005, .001, 1/365, "small combined"),
-        Scenario(-15, .05, .01, .1, "large combined"), Scenario(-10, elapsed=.25, label="American expiry"),
-        Scenario(-10, elapsed=.5, label="after American expiry"), Scenario(-10, elapsed=.75, label="second expiry"),
-        Scenario(10, elapsed=1.25, label="after all expiries")]
     results = []
     def formatted(value):
         return "N/A" if value is None else f"{value:.6f}"

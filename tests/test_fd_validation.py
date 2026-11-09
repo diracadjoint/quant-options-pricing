@@ -6,6 +6,8 @@ budgets describe peer-grid stability; no exact free-boundary reference exists.
 
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from options_engine import FDConfig, crr_price, fd_price
 
 

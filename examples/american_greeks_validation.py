@@ -7,10 +7,11 @@ import platform
 from options_engine import Bumps, FDConfig, numerical_greeks
 
 
-def run_studies() -> dict:
+def run_studies(*, quick: bool = False) -> dict:
     """Return serializable results; each study varies only its stated axis."""
     results = {}
-    for kind, spot, rate, yield_ in [("put", 100, .05, 0), ("call", 100, .02, .10), ("put", 81, .05, 0)]:
+    cases = [("put", 100, .05, 0)] if quick else [("put", 100, .05, 0), ("call", 100, .02, .10), ("put", 81, .05, 0)]
+    for kind, spot, rate, yield_ in cases:
         key = f"{kind}, S={spot}, r={rate}, q={yield_}"
         cache = {}
         def run(m=320, nt=100, scale=1.0):
@@ -23,12 +24,13 @@ def run_studies() -> dict:
         entry = dict(bumps={str(s): run(scale=s) for s in (.25, .5, 1, 2)},
                      spatial={str(m): run(m=m) for m in (160, 320, 640)},
                      temporal={str(nt): run(nt=nt) for nt in (50, 100, 200)})
-        if spot == 100:
+        if spot == 100 and not quick:
             entry["crr"] = {str(n): asdict(numerical_greeks(spot, 100, 1, rate, .2, yield_, kind,
                               method="crr", tree_steps=n, bumps=Bumps(2.5, .005, .001, .01)))
                             for n in (800, 801, 1600, 1601)}
         results[key] = entry
-    add_fine_bump_study(results)
+    if not quick:
+        add_fine_bump_study(results)
     return results
 
 

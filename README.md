@@ -1,666 +1,127 @@
 # Options Pricing and Risk Engine
 
-Provides **European vanilla prices and analytic Greeks** under
-Black–Scholes–Merton (BSM), and **European/American CRR tree prices**, with
-constant continuous dividends. A Crank–Nicolson/PSOR finite-difference solver
-provides an independent European/American price comparison. Bump-and-reprice
-provides numerical European/American Greeks with explicit stability diagnostics.
-Signed portfolios aggregate value/risk and support shock scenarios, cash
-settlement and mark-to-market P&L.
-Self-financing static/dynamic Delta hedges add stock inventory and an auditable
-cash, dividend and financing ledger on user-supplied deterministic paths.
+**v1.0.0rc1 — release candidate for review.** A Python research library for
+European/American vanilla option pricing, risk and portfolio accounting. It
+compares independent numerical methods and follows the financial effects of
+exercise, shocks and Delta hedges through explicit cash ledgers.
 
-## Install and run
+All experiments use synthetic data. The runtime core uses only Python's standard
+library. A software license has **not yet been selected**; see the
+[owner's license decision](docs/license_decision.md).
 
-Python 3.10 or later is required. From the repository root:
+## Available functionality
+
+- European Black–Scholes–Merton prices and analytic Delta/Gamma/Vega/Theta/Rho,
+  with continuous dividends and explicit degenerate cases.
+- Independent European/American CRR trees and Crank–Nicolson/Rannacher finite
+  differences with PSOR, residuals, exercise premium and grid contact boundaries.
+- Numerical Greeks with bump/mesh studies, unavailable values and risk warnings.
+- Signed positions/multipliers, aggregate risk, scenario P&L, expiry settlement
+  and continuously compounded positive/negative cash balances.
+- Unhedged, static and dynamic Delta hedge histories with stock, dividends,
+  financing and self-financing reconciliation.
+
+## Install and try
+
+Python >=3.10. From the repository root:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -e '.[test]'
+python -m pip install -r requirements/dev.txt
+python -m pip install --no-build-isolation -e '.[test]'
 python examples/bsm_price.py
-python -m pytest -q
 ```
 
-On Windows activate with `.venv\Scripts\activate` instead. The library has no
-runtime dependencies outside Python's standard library. Installing the test
-extra requires pytest; once installed, all tests execute offline.
-Validated with Python 3.12.14, pytest 9.2.0 and setuptools 84.2.1.
-
-Example output:
-
-```text
-Call: 10.450583572186
-Put: 5.573526022257
-```
-
-## Public API and conventions
+On Windows use `.venv\Scripts\activate`. Core-only installation: `python -m pip
+install .`; no NumPy, SciPy or Matplotlib is required by pricing/risk modules.
 
 ```python
-from options_engine import bsm_price
+from options_engine import bsm_price, bsm_greeks, crr_price
 
-call = bsm_price(100, 100, 1.0, 0.05, 0.20)
-put = bsm_price(
-    spot=100, strike=100, maturity=1.0, rate=-0.01,
-    volatility=0.20, dividend_yield=0.02, option_type="put",
-)
+call = bsm_price(100, 100, 1, 0.05, 0.20)  # 10.45058357218555
+risk = bsm_greeks(100, 100, 1, 0.05, 0.20)
+american_put = crr_price(100, 100, 1, 0.05, 0.20, option_type="put", steps=800)
+print(call, risk.delta, american_put.price)
 ```
 
-`bsm_price(spot, strike, maturity, rate, volatility, dividend_yield=0.0,
-option_type="call") -> float` returns the price per unit of the underlying.
+Detailed signatures, units and runnable portfolio/hedge examples are in the
+[API and accounting reference](docs/api_reference.md).
 
-| Parameter | Units and domain |
-| --- | --- |
-| `spot`, `strike` | Same currency; strictly positive |
-| `maturity` | Remaining time in years; nonnegative |
-| `volatility` | Annualized decimal volatility; nonnegative; `0.20` = 20% |
-| `rate` | Continuously compounded annual decimal interest rate; may be negative |
-| `dividend_yield` | Continuous annual decimal dividend yield; may be negative |
-| `option_type` | Exactly `"call"` or `"put"` |
-
-All numeric inputs must be finite real scalars. Strings, booleans, complex
-numbers and arrays are rejected. Invalid inputs raise `ValueError` with the
-parameter name. Validation also runs at expiry and zero volatility.
-The domain here follows the current implementation request: unlike the initial
-project specification, spot must be positive and negative rates/yields are allowed.
-
-## Model and boundaries
-
-Assume lognormal risk-neutral dynamics `dS = (r - q) S dt + sigma S dW`, constant
-parameters, continuous trading, frictionless markets and exercise at maturity.
-Dividends are represented by a continuous yield, not discrete cash payments.
-There are no dates or day-count conversions: callers supply remaining years.
-
-For positive time and volatility, define
-`d1 = (log(S/K) + (r-q+sigma²/2) tau) / (sigma sqrt(tau))` and
-`d2 = d1 - sigma sqrt(tau)`. With `N` the standard normal CDF:
-
-```text
-call = S exp(-q tau) N(d1) - K exp(-r tau) N(d2)
-put  = K exp(-r tau) N(-d2) - S exp(-q tau) N(-d1)
-```
-
-At `maturity == 0`, return the intrinsic payoff exactly. At
-`volatility == 0`, return the positive part of the discounted spot minus
-discounted strike (reversed for a put). These branches do not evaluate `d1`
-or `d2` and do not substitute an epsilon.
-
-## Validation and numerical limits
-
-Tests include fixed call/put references with and without dividends, put–call
-parity, discounted no-arbitrage bounds, boundary cases, negative interest and
-dividend rates, invalid inputs, and spot/volatility monotonicity. Reference and
-parity comparisons use `rel=1e-12, abs=1e-11`; bounds allow `1e-11` plus `1e-12`
-times the larger discounted notional. Expected prices are independent constants
-or financial identities, never prices generated by the function under test.
-
-Prices use Python floating-point arithmetic. The normal CDF uses standard-library
-`math.erfc` to avoid cancellation from `1 + erf` in negative tails. Logarithms
-are subtracted rather than forming `spot / strike`. Extreme tails and discount
-factors can underflow to zero; subtracting almost equal terms can lose relative
-accuracy for tiny prices, especially near expiry or zero volatility. Negative
-roundoff in a price is floored at zero. Overflow and nonfinite intermediates,
-or a positive total volatility that underflows to zero, raise `ValueError` with
-a floating-point range message. Arbitrary precision is outside this step's scope.
-
-## European analytic Greeks
-
-```python
-from options_engine import bsm_greeks
-
-g = bsm_greeks(100, 100, 1, 0.05, 0.20, dividend_yield=0.02)
-print(g.delta, g.gamma, g.vega, g.theta, g.rho)
-```
-
-The signature matches `bsm_price` and returns an immutable `Greeks` object.
-Delta/Gamma differentiate spot. Vega and Rho are per absolute unit of volatility
-and rate: divide by 100 for one percentage point, or Rho by 10,000 for one bp.
-Theta is the calendar-time derivative, minus the derivative in remaining years;
-divide by 365 for a daily display. `GreeksUnavailableError` explicitly reports
-zero maturity or volatility: this API supplies interior formulas only, including
-when a particular boundary limit could be defined separately. It never silently
-returns zero for unavailable sensitivities. These are European Greeks.
-
-## American exercise via CRR
-
-```python
-from options_engine import crr_price
-
-r = crr_price(100, 100, 1, 0.05, 0.20, option_type="put", steps=800)
-print(r.price, r.european_price, r.early_exercise_premium)
-```
-
-`crr_price` has the same financial inputs, plus keyword-only `steps=500` and
-`exercise_style="american"` (or `"european"`). Returns `BinomialResult` with
-price, European control on the **same lattice**, step count, risk-neutral
-probability and method. The premium is the difference from that tree control;
-the report separately compares the European control against analytic BSM.
-American values use the maximum of continuation and intrinsic value at each
-node. Probability outside [0,1] raises an error asking for more steps; it is not
-clipped. The implementation is independent of the analytic pricing formula.
-
-At zero volatility, maximize discounted payoff over continuous exercise time,
-checking endpoints and an interior stationary point when it exists. This is
-not a zero-width tree. Negative rates/yields are supported; familiar upper
-bounds such as American put <= strike require nonnegative rates and are not
-asserted universally. At expiry return payoff.
-
-CRR uses O(N) memory and O(N²) runtime in pure Python. Exercise at lattice dates
-approximates continuous American exercise. No single run certifies convergence:
-refine steps and inspect even/odd sequences separately. Tail nodes can overflow
-for extreme parameters or very large trees, producing `ValueError`. The
-`probability` field is None and `method` is `"deterministic"` in boundary branches.
-
-## Reproduce the analysis
+## Test and reproduce
 
 ```bash
-python examples/greeks_and_american.py
-python -m pytest -q
+python -m pytest -m 'not slow' -q    # fast feedback
+python -m pytest -m slow -q          # retained fine-grid / numerical-risk tests
+python -m pytest -q                 # both groups
 ```
 
-The script prints the benchmark inputs, Greek units, finite-difference checks,
-and four refinement levels for both even and odd trees. The measured output is
-saved in [docs/validation_greeks_american.md](docs/validation_greeks_american.md).
-All inputs are synthetic; there is no market-data feed. Greek tests additionally
-check call/put identities and the BSM PDE residual. American tests cover a
-standard put reference, no early exercise for a non-dividend call with
-nonnegative rates, dividend calls, obstacles, deterministic interior exercise,
-invalid probabilities and parameter validation. Price convergence and Greek
-consistency are separate checks; agreement between methods alone is no proof
-of accuracy. The PDE solver below adds grid exercise frontiers and PSOR diagnostics.
-
-## Crank–Nicolson and PSOR
-
-```python
-from options_engine import FDConfig, fd_price
-
-result = fd_price(
-    100, 100, 1, 0.05, 0.20, option_type="put",
-    config=FDConfig(spatial_steps=400, time_steps=200, s_max=400),
-)
-print(result.price, result.max_residual, result.exercise_boundary[-1])
-```
-
-`fd_price` has the same financial inputs as BSM, plus `exercise_style`
-(`"american"` by default or `"european"`) and `config=FDConfig(...)`.
-The **PDE currently requires nonnegative rates and dividend yields**; negative
-values continue to work in BSM and CRR. Expiry/zero-volatility cases use the
-existing deterministic branch, without a PDE or artificial epsilon.
-
-The solver advances in remaining time on a uniform spot grid from payoff at
-tau=0. It uses central spatial differences, a Thomas tridiagonal solver for
-Europeans and projected SOR for Americans. Both old and new time-level boundary
-contributions are included. No dense matrix inverse is formed. Rannacher
-startup replaces the first two full time steps with four implicit Euler half
-steps; American obstacles are solved at each half step. `rannacher=False`
-disables startup smoothing explicitly.
-
-At S=0: calls are zero, European puts are K exp(-r tau), American puts are K.
-At Smax: puts are zero; European calls use the nonnegative asymptotic
-Smax exp(-q tau)-K exp(-r tau); American calls use its maximum with Smax-K.
-These upper boundaries approximate a truncated domain. Smax defaults to
-4 max(spot,strike) and must exceed both; this is a starting point, not an
-accuracy guarantee. Expand Smax while holding spatial resolution fixed.
-Spot prices use linear interpolation on the final grid.
-
-Where a central drift stencil loses nonnegative off-diagonals, a consistent
-one-sided drift stencil restores monotonicity of the spatial generator.
-`upwind_nodes` counts these nodes; their spatial order becomes first order.
-`cn_positive_rhs` records whether all explicit matrix coefficients were
-nonnegative at every time step. CN is not unconditionally positivity-preserving;
-Rannacher helps with the payoff kink but does not certify positivity on any mesh.
-
-PSOR controls: `omega=1.2`, `tolerance=1e-8`, `max_iterations=10000`.
-Both max update/K and `||min(v-g, Av-b)||inf/K` must meet tolerance.
-`ConvergenceError` propagates exhaustion; matrices without the required strict
-M-matrix diagonal dominance are rejected. `FDResult` includes the actual Smax,
-configuration, grid, values, total/max iterations and worst residual, update,
-obstacle and dual violations over all steps. A small algebraic residual is
-distinct from price convergence: spatial, temporal, domain and interpolation
-errors require separate checks.
-
-`exercise_boundary` contains `(remaining_years, contact_spot_or_None)` at each
-solved time level, excluding expiry. Only positive-payoff contacts within
-`K * max(10*tolerance, 1e-7)` are eligible; puts use the highest contact and calls
-the lowest. Contacts near a truncation boundary require domain checks. This
-grid estimate is not an interpolated free boundary or proof of smooth pasting.
-Deterministic branches return empty grids/boundaries and zero solver iterations.
-
-Reproduce the finite-difference analysis:
+For the plotting workflow, use **Python 3.12** with the tested visualization lock:
 
 ```bash
-python examples/finite_difference_validation.py
-python -m pytest -q
+python -m pip install -r requirements/visualization-py312.txt
+python -m pip install --no-build-isolation -e '.[test,visualization]'
+python examples/reproduce.py --mode quick --output work/quick-results
+python scripts/verify_results.py work/quick-results
 ```
 
-Measured tables are in [docs/validation_finite_difference.md](docs/validation_finite_difference.md):
-American put/dividend-call comparisons with independently refined CRR pairs,
-four spatial refinements, four isolated temporal refinements and four domain
-expansions preserving dS. The data are synthetic and all experiments run offline.
-Runtime is O(M Nt) for European solves and O(M Nt I) for PSOR with I iterations;
-memory is O(M+Nt) including the boundary history, in standard-library Python.
-
-### Strengthened regression budgets
-
-The following budgets apply to the declared **K=100** validation cases, in
-absolute price/spot units. They replace the earlier FD price allowance of 0.10
-(`error/K < 1e-3`). They do not claim the same accuracy for arbitrary inputs or
-the default grid. All grids use Smax=400 unless stated otherwise.
-
-| Check | Configuration | Acceptance budget |
-| --- | --- | --- |
-| European prices vs BSM | M=640, Nt=200; declared ITM/ATM/OTM cases, including short maturity | Absolute price error <0.01 |
-| American cross-cases vs CRR1200 | M=400, Nt=200 | Absolute price difference <0.005 |
-| Core American put/dividend call vs both CRR2400/2401 | M=640 and 1280, Nt=200 | Absolute price difference <0.003 against each parity |
-| CRR reference stability | 1200→2400 and 1201→2401; finest even/odd pair | Each absolute change/spread <0.001 |
-| Boundary spatial stability at tau=.25,.5,1 | M=160,320,640,1280; Nt=200 | Coarse vs finest within 2 coarse cells; 640 vs 1280 within 0.625 |
-| Boundary temporal stability at the same dates | M=640; Nt=200→400 | Change <=0.625 (one spatial cell) |
-| Final boundary value matching | M=640/1280 | Payoff gap <=1e-5 |
-| Continuation-side boundary secant | M=640/1280 | Within 0.03 of -1 for put, +1 for call |
-| Dividend-call domain expansion | Smax=M=200,300,400,500; dS=1, Nt=200 | Price spread <1e-5 |
-
-Core put parameters are r=.05, q=0; core dividend-call parameters are r=.02,
-q=.10; both use S=K=100, tau=1, sigma=.20. Boundary comparisons are peer-grid
-stability checks, distinct from price convergence. No exact free-boundary
-reference is assumed, and monotonic improvement is not required of quantized
-contacts or secant slopes. The secant is only a smooth-pasting diagnostic;
-it does not add numerical Greek functionality.
-
-The domain study includes high yield (r=.02,q=.10), where exercise occurs
-before the upper boundary, and low yield (r=.05,q=.01), where the continuation
-boundary is approximate and no exercise contact is observed inside the tested
-domains. No contact inside Smax does not establish absence of a global exercise
-boundary. An additional Smax=150 report row demonstrates truncation sensitivity;
-the 1e-5 stability budget applies to 200..500. These studies preserve dS, time
-resolution, spot interpolation and solver tolerances during domain expansion.
-The PDE restriction to r,q>=0 is unchanged.
-
-## American numerical Greeks
-
-```python
-from options_engine import Bumps, FDConfig, numerical_greeks
-
-risk = numerical_greeks(
-    100, 100, 1, 0.05, 0.20, option_type="put",
-    bumps=Bumps(spot=2.5, volatility=0.005, rate=0.001, maturity=0.01),
-    fd_config=FDConfig(320, 100, 400, tolerance=1e-10),
-)
-print(risk.delta.value, risk.gamma.value, risk.gamma.flags)
-```
-
-`numerical_greeks` shares the BSM financial arguments. It defaults to American
-exercise and `method="fd"`; `method="crr", tree_steps=...` selects independent
-tree repricing. `exercise_style="european"` supplies an analytic-Greek control.
-`Bumps` fields are **absolute** spot/volatility/rate/remaining-year changes.
-Optional fields default to max(1% of spot,0.01), max(1% of volatility,1e-4),
-max(1% of absolute rate,1e-4), and max(1% of maturity,1/365), respectively.
-These are starting scales, not automatic accuracy choices. In particular,
-default spot bumps can be smaller than the default FD cell and are flagged.
-Choose explicit bumps and verify stability before interpreting a Greek.
-
-The result contains `.price`, `.delta`, `.gamma`, `.vega`, `.theta`, `.rho`,
-actual `.bumps`, method, style, FD configuration or tree steps, and all
-`.repricings`. Each sensitivity carries `.value`, `.bump`, `.stencil`, `.flags`.
-Each repricing records parameter, shift, price, approximate exercise activity,
-and FD residual/iteration count (None for CRR). Flags are hazard indicators;
-their absence does not certify stability. Solver failures propagate immediately.
-
-At an interior parameter x, first differences use `(V(x+h)-V(x-h))/(2h)`;
-Gamma uses `(V(S+h)-2V(S)+V(S-h))/h²`. Theta reverses the sign of the remaining
-maturity derivative, per calendar year. Vega/Rho are per absolute unit; divide
-by 100 for one percentage point (Rho by 10,000 for one bp). q remains fixed.
-When a central stencil leaves a lower domain boundary, a second-order forward
-stencil replaces it: `(-3V0+4V1-V2)/(2h)` for first differences and
-`(2V0-5V1+4V2-V3)/h²` for Gamma. Spot must stay positive; volatility and maturity
-nonnegative; the FD rate domain is nonnegative, whereas CRR rates may be negative.
-At expiry, all Greek values are explicitly None, with an unavailable stencil;
-the price remains the payoff. At zero volatility, numerical boundary estimates
-carry an explicit nonclassical-derivative warning. Unrepresentable or nonpositive
-bumps are rejected; no arbitrary epsilon is substituted.
-
-Every distinct bumped input solves optimal exercise afresh. Base and spot
-repricings are cached within the call so Delta/Gamma share the same prices.
-For FD, Smax (including its default) is resolved **once at the original spot**
-and frozen with M, Nt, Rannacher and PSOR controls for every repricing. A spot
-bump leaving that domain raises an error instead of silently moving the mesh.
-Maturity bumps keep Nt fixed, so the temporal step changes with remaining years.
-CRR keeps the number of steps fixed and validates probability on every bump.
-
-FD spot interpolation is piecewise linear. A tiny spot bump can stay inside one
-cell and produce Gamma=0, or straddle a node and amplify a slope jump. Any
-spot bump smaller than dS receives an `interpolation-limited` flag. Larger bumps
-still require refinement checks; they also introduce differentiation bias.
-Changing exercise activity across repricings produces a separate flag. The
-activity diagnostic compares positive payoff to price within 1e-7 K, so it is
-approximate, particularly near contact. No analytic American derivative,
-universal smooth Gamma or global sensitivity sign is claimed near the boundary.
-
-### Reproduce separate sensitivity studies
+Full reproduction (several minutes) regenerates the extended studies and
+original detailed example reports:
 
 ```bash
-python examples/american_greeks_validation.py
-python -m pytest -q
+python examples/reproduce.py --mode full --output docs/generated
+python scripts/verify_results.py docs/generated
+python scripts/check_docs.py
 ```
 
-[docs/validation_american_greeks.md](docs/validation_american_greeks.md) reports:
+Both modes generate CSV/JSON tables, eight PNG/SVG figure families and a manifest
+with machine/package/source metadata and file hashes. Quick is representative;
+full adds near-boundary, finer-bump and CRR risk studies. See the
+[reproduction guide](docs/reproduction.md), [measured validation record](docs/v1_validation.md)
+and [figure gallery](docs/gallery.md). Tests/experiments run offline after installation.
 
-- Bump scales 1/4 (interpolation stress), 1/2, 1 and 2 on fixed M=320, Nt=100.
-- A finer bump plateau on fixed M=640, Nt=100, using spot bumps 0.625/1.25/2.5;
-  other base bumps retain their original scales.
-- M=160,320,640 with Nt=100 and all absolute bumps fixed.
-- Nt=50,100,200 with M=320 and all absolute bumps fixed.
-- Independent CRR800/801/1600/1601 estimates, inspecting parity separately.
-- A near-boundary put at S=81, in addition to continuation benchmarks at S=100.
+## Representative measured results
 
-All use K=100, tau=1, sigma=.20, Smax=400 and PSOR tolerance=1e-10. Put parameters
-are r=.05,q=0; dividend-call parameters r=.02,q=.10. For the two S=100 benchmarks,
-regression budgets for the finer bump plateau, spatial change 320→640 and
-temporal spread 50/100/200 are: Delta 0.003, Gamma 0.001, Vega 0.20, Theta 0.05,
-Rho 0.20, in the units above. These empirical budgets are not imposed near the
-exercise frontier. The wider put spot-bump range 1.25/2.5/5 produced Delta
-spread 0.00338, exceeding the declared 0.003 budget. This result is retained
-in the report; the tolerance was not relaxed. Tests additionally compare Delta
-dispersion in the refined and original setups. That comparison changes both
-mesh and bump range and is not used to attribute improvement to either; the
-per-axis studies keep the other choices fixed. Separate tests compare European numerical Greeks with BSM,
-non-dividend American calls with European analytic Greeks, and deep-exercise
-puts with local payoff sensitivities. The intentionally tiny-bump test verifies
-that interpolation-induced zero Gamma is flagged.
+For S=K=100, tau=1 year, r=.05, sigma=.20, q=0: European call **10.4505835722**,
+put **5.5735260223**. American put CN/PSOR with M=640, Nt=200, Smax=400 gives
+**6.08883942**; the refined CRR2400/2401 average is **6.09051979**, a comparison
+reference rather than exact truth. The figures separate spatial/time errors and
+show tree parity instead of assuming monotonic convergence.
 
-Study bump error at a fixed mesh **before** refining the mesh with fixed bumps;
-do not change both together and attribute the result to one source. No PSOR
-residual is interpreted as a Greek error bound. Portfolio accounting and P&L
-are provided separately by the module below.
+![European space and time refinements](docs/generated/figures/european_convergence.png)
 
-## Signed positions and portfolio risk
+The short-call hedge experiment starts at wealth 1000, uses the same 65-point
+path grid for each strategy, and compares final wealth with **1051.27109638**
+(initial wealth capitalized at r=.05). Dynamic/1 final wealth is 1338.92099701
+on the rise path, 1315.64159935 on the fall and 1562.73426517 on the reversal.
+These are deterministic stress outcomes, not performance guarantees; unhedged
+or static positions can outperform dynamic hedges on an individual path.
 
-```python
-from options_engine import (
-    Market, OptionContract, Portfolio, Position, Scenario,
-    value_portfolio, scenario_pnl,
-)
+![Wealth under hedge strategies](docs/generated/figures/hedge_wealth.png)
 
-market = Market(spot=100, volatility=0.20, rate=0.05, dividend_yield=0.02)
-book = Portfolio((
-    Position(OptionContract(100, 1, "call"), quantity=2, multiplier=100),
-    Position(OptionContract(95, 0.75, "put"), quantity=-1, multiplier=100),
-), cash=-1000)
-initial = value_portfolio(book, market)
-print(initial.total_value, initial.greeks.delta, initial.greeks.gamma)
+Open scalable SVGs and inspect all methods, premiums, boundaries, Greek
+stability, P&L and hedge attribution in the [gallery](docs/gallery.md). Tables
+retain numerical flags and unavailable approximations at expiry.
 
-result = scenario_pnl(
-    book, market,
-    Scenario(spot_change=-5, volatility_change=0.02,
-             rate_change=0.001, elapsed=30/365),
-    initial=initial,
-)
-print(result.exact_pnl, result.second_order_pnl, result.second_order_residual)
-```
+## Assumptions and limits
 
-The library currently models **one underlying and one currency**. `OptionContract`
-contains strike, remaining years, call/put type and exercise style. `Position`
-adds signed finite contract quantity, a strictly positive contractual multiplier,
-method (`"bsm"`, `"fd"`, `"crr"`), numerical controls/bumps and an optional label.
-Positive quantity is long, negative is short; finite fractional quantities are
-allowed for analytical baskets. `quantity * multiplier` gives signed underlying
-units. BSM positions must be European; American positions explicitly select FD
-or CRR. `Market` is shared by the portfolio; q is fixed across scenarios.
+Spot is strictly positive; strike positive; maturity/volatility nonnegative;
+inputs finite and scalar. Parameters are constant and dividends continuous.
+BSM/CRR accept negative rates/yields; **the PDE requires r,q>=0**. Greeks are
+per absolute parameter unit, with calendar Theta per year. Public interfaces
+and conventions are specified in [PROJECT_SPEC.md](PROJECT_SPEC.md).
 
-Value and every option Greek aggregate as `sum(quantity * multiplier * unit_value)`.
-Cash is included in total value; it has zero current option Greeks, with future
-carry accounted for separately. The aggregate includes Delta, Gamma, Vega, annual
-calendar Theta and Rho in the same units as the pricing/risk modules. Numerical
-risk diagnostics and flags are retained on each `PositionValue.numerical_risk`.
-FD Greeks use the chosen configuration/bumps; their aggregation does not improve
-their accuracy or certify stability. Zero quantities skip pricing and carry zero
-exposure. Identical contracts with identical pricing/risk controls share unit
-calculations; exact offsetting units cancel even when unit Greeks are unavailable.
-Other unavailable components propagate None instead of silently becoming zero.
+American boundaries are mesh estimates. Default numerical bumps need stability
+checks; interpolation and exercise transitions can make Gamma unreliable.
+P&L adds second order only in spot and omits cross terms. Scenario shocks use
+an explicit instantaneous-shock/flat-spot convention with expiry cash accrual.
+Hedge paths are piecewise linear and self-financing; dividends are credited at
+interval ends without intra-interval dividend interest. American hedge examples
+hold to expiry and do not simulate early exercise/assignment. No market feed,
+physical delivery, fees, margin or stochastic-path replication claim is included.
 
-`Portfolio.cash` is a supplied nominal cash balance and may be negative (borrowing).
-Purchase/sale premiums are **not automatically booked**. To model initial funding,
-supply the cash balance explicitly. Reported P&L measures the change from current
-portfolio valuation, not historical trade profit. `value_portfolio(...,
-compute_greeks=False)` supplies price-only valuation; exact scenarios still work,
-while approximations needing omitted Greeks become unavailable. Reusing
-`initial=...` avoids recalculating unchanged baseline risk; it must match the
-portfolio and market.
-
-### Scenario and expiry conventions
-
-All shocks are **absolute**, not percentages of their starting values:
-spot_change=5 adds five currency units; volatility_change=0.01 adds one volatility
-percentage point; rate_change=0.001 adds ten bp. `elapsed` is nonnegative years;
-dates, calendars and trading-day conventions are outside this API. Shocked inputs
-must remain in the selected solver's domain; live FD positions retain r,q>=0.
-
-The stress path is explicit: spot, volatility and rate shocks occur immediately
-at time zero, then the shocked spot stays flat through the horizon. The shocked
-rate and volatility are constant and q is unchanged. This convention specifies
-spot at every intermediate expiry; it is not a simulated GBM path or an implicit
-assumption that an unobserved expiry spot equals a terminal-only observation.
-
-For each nonzero position with initial remaining maturity tau and horizon h:
-
-- If h<tau, reprice the remaining contract at tau-h with shocked inputs.
-- If h>=tau, remove the option and cash-settle at signed units times payoff
-  using the specified spot at tau. The principal may be positive or negative.
-- Accrue that settlement independently from tau to h, multiplying it by
-  `exp(shocked_rate * (h-tau))`. At exactly expiry there is no post-settlement carry.
-- An option already at tau=0 settles at the **original** spot before the shock;
-  its Greek exposure becomes zero and its proceeds/payments accrue from time zero.
-
-Original cash, including negative borrowing, accrues from time zero to h at the
-same continuously compounded scenario rate. The horizon total is live option
-value plus original cash future value plus all signed settlement future values.
-No expired option value is counted twice. `ScenarioResult` exposes each of these
-components and a `ScenarioLeg` ledger with status, remaining time, expiry time,
-settlement principal and horizon contribution. Inputs are immutable; no trade or
-cash transaction is sent anywhere.
-
-American exercise rights are priced optimally at valuation endpoints, but the
-scenario accounting policy holds positions to horizon/expiry: **no intervening
-early-exercise or assignment transaction is simulated**. Thus this stress P&L
-is not a realized optimal-exercise path simulation. Settlement is in cash, not
-physical delivery; there are no underlying stock positions, hedge trades,
-transaction costs, margin, tax or external cash flows. q affects option prices;
-option holders do not receive cash dividends on the underlying in this ledger.
-
-### Local P&L comparison
-
-Before expiry, the first-order option approximation is
-`Delta*dS + Vega*dsigma + Rho*dr + Theta*h`. Both approximations additionally
-include exact carry on the initial effective cash balance. The second-order
-field adds `Gamma*dS²/2`: it is **second order in spot only**, not a full
-multivariate Hessian expansion. Cross terms and higher orders are omitted.
-Residuals are full revaluation P&L minus the corresponding approximation.
-`exact_pnl` means full repricing rather than Taylor; it still inherits model
-assumptions, discretization and solver error.
-Large shocks, changes in exercise region, interpolation and numerical-Greek
-noise can create material residuals. Adding Gamma need not improve every
-combined scenario.
-
-When a nonzero live leg reaches or crosses expiry, the initial local Greek
-expansion is explicitly unavailable (None), while payoff/cash P&L remains fully
-defined. Unknown Greeks are required only for nonzero shocks; known zero shocks
-do not manufacture unavailable contributions. Already-settled cash accrues
-normally. Each FD leg's original Smax, M, Nt and solver controls remain fixed
-through scenarios, so spot shocks do not silently change the spatial domain.
-A shock leaving that domain raises the pricing error.
-
-Reproduce the mixed European/American portfolio experiment:
-
-```bash
-python examples/portfolio_validation.py
-python -m pytest -q
-```
-
-[docs/validation_portfolio.md](docs/validation_portfolio.md) records signed
-holdings, aggregate risk, isolated/combined shocks, approximation residuals and
-an auditable cash ledger at/beyond multiple expiries. All data are synthetic and
-the experiment runs offline. Tests separately verify signed scaling, exact
-offsets, cash financing, every shock dimension, time direction, multiple expiry
-flows, already-due settlement, frozen FD domains and unavailable risk handling.
-
-## Static and dynamic self-financing Delta hedges
-
-```python
-from options_engine import (
-    Market, OptionContract, Portfolio, Position, simulate_delta_hedge,
-)
-
-market = Market(100, 0.20, 0.05, 0.02)
-book = Portfolio((Position(OptionContract(100, 1), quantity=-1, multiplier=100),))
-path = [(0, 100), (0.25, 110), (0.5, 95), (0.75, 105), (1, 120)]
-
-results = {
-    strategy: simulate_delta_hedge(
-        book, market, path, strategy=strategy, initial_wealth=1000,
-    )
-    for strategy in ("unhedged", "static", "dynamic")
-}
-print(results["dynamic"].final_wealth, results["dynamic"].excess_wealth)
-for row in results["dynamic"].history:
-    print(row.time, row.delta_used, row.shares_after, row.cash, row.wealth)
-```
-
-`simulate_delta_hedge(portfolio, market, path, *, strategy="dynamic",
-rebalance_every=1, initial_wealth=None, warning_policy="raise")` uses the existing
-contract, position, multiplier, price and risk representations. Every price/risk
-evaluation retains the same volatility, continuously compounded rate and
-continuous dividend yield from `market`; only spot and remaining maturity change.
-BSM European positions are the primary demonstration. Existing FD/CRR positions,
-including Americans, are also supported without modifying their public interfaces.
-
-### Path and trading schedule
-
-Supply a sequence of `(time, spot)` pairs or `PathPoint` objects. Times are finite
-years from valuation, begin at zero and increase strictly; at least two points
-are required. Spots are finite and strictly positive, with the first equal to
-`market.spot`. There are no dates/calendars, random paths or market-data calls.
-The underlying is piecewise linear between supplied observations. Every nonzero
-position expiry inside the path is inserted as an event, using that interpolated
-spot for payoff settlement rather than a terminal-only price assumption.
-
-- `unhedged`: hold zero shares.
-- `static`: set shares to minus the aggregate active option Delta at opening,
-  then keep this initial quantity fixed until all options expire or the horizon.
-- `dynamic`: open the same hedge and rebalance at every kth original observation
-  (`rebalance_every=k`), plus mandatory expiry events for the remaining portfolio.
-
-Stock closes when all options have expired, or at final horizon. A shorter path
-does not force a fictitious option expiry: live options remain marked, with a
-history warning. Partial expiries remove those contracts; dynamic hedges update
-to the remaining exposure even if the expiry falls between scheduled trades.
-Static aggregate inventory remains fixed until the last expiry/horizon. After
-the last expiry only cash remains and continues accruing through the path.
-Prices and Greeks are refreshed at **every observation/event**, including
-static/sparse holds. Only decision times use the Delta to select inventory.
-
-### Opening funding and self-financing identity
-
-The option positions may be signed, multipliers remain positive, and shares may
-be fractional. At a Delta decision, `H = -aggregate_option_delta` in underlying
-units. Portfolio cash has no spot Delta.
-
-An explicit `initial_wealth=W0` sets the total opening endowment. Initial cash
-before stock is `W0 - live_option_value`; buying/selling the target shares then
-gives `C0 = W0 - live_option_value - H0*S0`. This records the fair-value financing
-of both options and stock, including short-option premium and borrowing. If
-`initial_wealth` is omitted, W0 defaults to the original option-book NAV including
-`Portfolio.cash` and any already-due payoff; existing cash is therefore preserved.
-An explicit endowment overrides this default NAV; the initialization difference
-is returned as `opening_cash_adjustment`, rather than being silently discarded.
-This is opening financing only, not an external flow injected during the hedge.
-
-For each later trade, `trade_cost = (H_new-H_old)*S` and
-`cash_after = cash_before-trade_cost`. Purchases use cash and sales add cash.
-Wealth is always `W = live_option_value + H*S + cash`. The before/after trade
-wealth is recorded and must agree up to floating-point rounding; a transaction
-does not itself create profit. There are no fees, spread, margin, taxes, stock
-rounding, stock-borrow fee, funding spread or external contributions after opening.
-
-### Financing, dividends and expiry order
-
-Shares remain fixed between events. The PREVIOUS cash balance earns or pays
-`C_old * expm1(r*dt)`. With constant r, this is exact continuous compounding for
-that old balance, including negative borrowing and negative rates where the
-chosen option solver permits them.
-
-Stock dividends over the interval are approximated by
-`q * H_old * (S_left+S_right)/2 * dt`, credited to cash at the RIGHT endpoint.
-The nominal integral is exact for a linear spot segment and fixed shares;
-depositing the stream only at the endpoint omits intra-interval interest on
-dividends. Subsequent intervals finance the resulting cash normally. Short
-shares pay dividends when q is positive. Dividend cash is not reinvested into
-additional shares automatically. To compare trading frequency fairly, keep the
-observation grid fixed and change only `rebalance_every`; resampling also changes
-this discrete dividend-credit approximation.
-
-At an expiry event, after interval interest/dividends, cash-settle each option's
-signed units times payoff at the path spot, remove it, then trade stock. Already-
-due options settle once at opening. If all options have expired, close all shares
-and send sale proceeds or short-cover costs to cash. No option mark or stock
-liquidation proceeds are counted twice. The end state is cash only when the
-path includes all expiries; otherwise remaining options are still marked.
-
-American policy is **hold to expiry, no early exercise or assignment**. Rights
-and numerical Greeks are recomputed at each observation with the existing
-optimal-exercise pricers, but the ledger does not simulate exercising those
-rights or being assigned before expiry. Such a path strategy needs separate
-rules. FD Smax, spatial/time interval counts and solver controls are resolved
-from the original spot and frozen throughout; a path/bump leaving the domain
-raises rather than silently moving it. Explicit `Bumps` remain unchanged;
-omitted bump fields use the risk module's state-dependent defaults at each
-observation. Actual bumps/stencils remain in each numerical-risk snapshot.
-Solver failures propagate.
-
-### Delta quality policy and history
-
-An unavailable aggregate Delta raises `DeltaUnavailableError` at a requested
-hedge decision under **both** policies. It is never replaced by zero. If any
-portfolio risk warning is present at a decision, default `warning_policy="raise"`
-raises `DeltaWarningError`. This deliberately conservative policy covers all
-reported Greek warnings, not just warnings about Delta. `"allow"` permits finite
-Delta with warnings, sets `used_warned_delta=True`, and preserves the flags and
-the original numerical repricing diagnostics. Exceptions expose `.time` and
-`.valuation` for inspection. No convergence failure can be bypassed with `allow`.
-Holds and forced liquidation do not use a new Delta; warnings are still retained
-but do not cause warning-policy rejection when no Delta-based decision is made.
-
-Each immutable `HedgeRow` records time, spot, action, live option mark, Delta
-actually used, shares before/after, trade cost, signed dividends, financing,
-settlement cash/details, cash before/after, wealth before/after, warnings and a
-full `PortfolioValue` snapshot. `delta_used=None` means **not used**, as on a
-static hold or liquidation; the observed aggregate Delta remains available in
-`row.valuation.greeks.delta`. Empty active portfolios have known zero exposure;
-no singular at-expiry Greek formula is evaluated.
-
-Interval attribution is
-`change_in_wealth = option_pnl + stock_pnl + dividends + financing`, where
-`option_pnl = current_live_mark - previous_live_mark + settlement_cash` and
-`stock_pnl = old_shares * (new_spot-old_spot)`. `rebalance_error` and
-`reconciliation_error` expose numerical discrepancies instead of hiding them.
-Opening interval gains are zero. `HedgeResult` aggregates these components,
-returns the entire history, final wealth, P&L, initial wealth capitalized as
-`W0*exp(r*T)` and excess wealth over that benchmark. Ledger identities do not
-certify Greek/model accuracy or hedging performance.
-
-### Reproduce hedge comparisons
-
-```bash
-python examples/delta_hedging_validation.py
-python -m pytest tests/test_hedging.py -q
-python -m pytest -q
-```
-
-[docs/validation_delta_hedging.md](docs/validation_delta_hedging.md) measures rise,
-fall and reversal paths for a short European call, with the same initial wealth
-1000 and 65 observations. It compares unhedged/static strategies and dynamic
-rebalancing every 16, 4 and 1 observations, then audits a full coarse-path ledger
-and an American FD mixed portfolio with deliberately signaled numerical risk.
-The deterministic paths are not a statistical experiment: no monotonic hedging
-improvement on every individual path is required. Refining trades along a smooth
-deterministic path also does not reproduce BSM diffusion quadratic variation;
-excess wealth need not converge to zero. This is a financing/risk demonstration,
-not a proof of replication.
+GitHub Actions define fast Python 3.10/3.12/3.13 checks and weekly/manual slow
+validation plus full reproduction. Actual local/remote verification status is
+recorded separately; scheduled workflows become active after default-branch
+integration. Release/tag, license and visibility/distribution remain owner
+choices; this candidate performs no publication or merge.

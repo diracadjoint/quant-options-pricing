@@ -1,0 +1,62 @@
+{
+  "metadata": {
+    "mode": "full",
+    "measured_at_utc": "2026-11-08T23:59:33.882372+00:00",
+    "python": "3.12.14",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "machine": "x86_64",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "logical_cpus": 3,
+    "packages": {
+      "options-engine": "1.0.0rc1",
+      "matplotlib": "3.10.8",
+      "numpy": "2.3.5",
+      "pytest": "9.2.0",
+      "setuptools": "84.2.1"
+    },
+    "source_sha256": "3cf5220559ab9fd49e23f20556ac531deac62affe5673fe1ccf7625c9a0b9f2c",
+    "base_branch": "feat/self-financing-delta-hedging",
+    "base_commit": "68aaee42a115667068495f8df7bb2e3d964c9bb8",
+    "timing": "single perf_counter wall-time samples; no warm-up, no statistical speedup claim",
+    "synthetic_data": true,
+    "total_wall_seconds": 369.61754215899964
+  },
+  "artifacts": {
+    "data.json": "7051f0efffe0b20eeaafdb2d5020917bfc530b01d2cdcae6557df714b53e8082",
+    "figures/american_convergence.png": "4fbfc32f01a198eb3adc23a85f4d50880df3516be8217ba941310c4137dd80ba",
+    "figures/american_convergence.svg": "9a99d63a4223a74e5b436cd4e365fb2a5c3cd61351cd1611b19814cd71118c26",
+    "figures/error_cost.png": "e9482131e91d99139ea23be629c832d2c3f831ed8884edbdb399d21ac050b87a",
+    "figures/error_cost.svg": "addea6f25c61f1111c9af0ac1099e7df32917486e30e3cbc25af0af6b2092ea3",
+    "figures/european_convergence.png": "dbb3a97089520b2a7c3367dcbe4081047cc8b65eb91d2ad21acebb4b44d630a1",
+    "figures/european_convergence.svg": "3f243b0fbe0dd680de4bcd309076b4b90518038849d15fc55ad6f03a44a5970c",
+    "figures/exercise.png": "723ea1267202078ae2daab82fe7536203f800b9ea745c6cb0635d50eaf217725",
+    "figures/exercise.svg": "ecdd762fb74b2a8b048c8e57bdcf169cdb57b967aaac3b8165403c02bc7d424f",
+    "figures/greek_stability.png": "ee61a5be1e36e756ebe141cf96604b49e404af319ebac4cad26be636edf87529",
+    "figures/greek_stability.svg": "01e5850f2a26e7333f34d1e3e900316344bbeef61c398fa776e36f25098d9880",
+    "figures/hedge_components.png": "17f43c39605dbd2843c31d4723146d7234dbd55f9def0da0850a5e756aff297f",
+    "figures/hedge_components.svg": "6d838a3ab66135f90c1ec18d0b74e5554aafbed4770622727e62a123eb1537b7",
+    "figures/hedge_wealth.png": "d4ff9e204d3fb7df03c381e6f3464c9e19a1c3d088de21bbc77fdbd1765fc067",
+    "figures/hedge_wealth.svg": "e6aaa0215c3ca21df52eb1c09abc31a52cbb5683eca8014de954f51dd6316f47",
+    "figures/portfolio_pnl.png": "c47f6118629e7442f8c2dd64c404a35573315fa911140c19aa64d79f97bdc647",
+    "figures/portfolio_pnl.svg": "a8385ed2cdab11adc1ead8274db066dba757d132b972c65f48bc4d2f759a6190",
+    "reports/bsm_example.txt": "3595db461951268cb525cb5c6e9ccfbd84cc26e1e05772741eb4885e16826b53",
+    "reports/validation_american_greeks.md": "e837ca87dfb5220344ce48460a40a50f3c586403e85d291100ab7e802b45fb6a",
+    "reports/validation_delta_hedging.md": "92271edbce97673719ad123a8cb3fca99f31f0c157b73522ee2031933bd900a8",
+    "reports/validation_finite_difference.md": "0b0a31ff2e8d95a719f10b77e3204450cfd146f244c82d76f6fb221dded5491a",
+    "reports/validation_greeks_and_american.md": "a0870da903fd7f7f30478679e84a3651f3b95104574f127f9ea4d16c6ce3c3ec",
+    "reports/validation_portfolio.md": "c14ec095c1bbe1d57deb7f38cf2d4db453fe53ee2f822b5b447666943e44535f",
+    "tables/american.csv": "1f5e3f376fd265649bc75c1af32c07875add1b268f081d9a46ea9ff252741610",
+    "tables/boundary.csv": "2232c88a19fcde0c80d705cf402a512f06351d2300be106df88ee49446a3391c",
+    "tables/european.csv": "353107c67e5d1f6a412ff5f07d291539a380b11bdabe6cc630b5ca66390a9b01",
+    "tables/greeks.csv": "3593786110140b8c4f8dc9dd2d4e8927f9282a073401030ff13d96af284bfd60",
+    "tables/hedge.csv": "2ad6bc7c131de76e607e98e96e40df0e408f7dc16eec8aa2618983e8d8c8e0de",
+    "tables/hedge_components.csv": "3273f971d2ae9f9353f41ce4aa6550f9ce4cab76d48fe513007499f41ebf56cf",
+    "tables/hedge_ledger.csv": "84aca35c37b1ba310087eac09c93cb324723ef00f6e2192614ad320b67b23e5b",
+    "tables/portfolio.csv": "e6a06b132e63ed488d3728f00cbf1661c2c286f61dc21e8c840d30ef12eb44a2",
+    "tables/premium.csv": "87fde036956ecece7022fec8e261d9c6482f93c44bfee8d620eb30b1d5323827"
+  },
+  "presentation_refresh": {
+    "producer_sha256": "8ed6bf5ac24049504fd34b41cffd5ea67abaa7d2c0f733a0a34ba05c0ca92831",
+    "change": "Explicit European log-axis labels; original numerical measurements/provenance retained"
+  }
+}

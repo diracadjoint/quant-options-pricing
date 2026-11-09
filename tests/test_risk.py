@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from options_engine import Bumps, ConvergenceError, FDConfig, bsm_greeks, numerical_greeks
 
 

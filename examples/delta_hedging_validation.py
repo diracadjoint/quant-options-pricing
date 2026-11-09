@@ -6,7 +6,7 @@ from options_engine import (Bumps, FDConfig, Market, OptionContract, Portfolio, 
                             simulate_delta_hedge)
 
 
-def main() -> None:
+def demo_inputs():
     market = Market(100, .20, .05, .02)
     portfolio = Portfolio((Position(OptionContract(100, 1), -1, 100),))
     paths = {
@@ -15,6 +15,11 @@ def main() -> None:
         "reversal": [(i/64, 100+50*min(i/64, 1-i/64)) for i in range(65)],
     }
     settings = [("unhedged", 1), ("static", 1), ("dynamic", 16), ("dynamic", 4), ("dynamic", 1)]
+    return market, portfolio, paths, settings
+
+
+def main() -> None:
+    market, portfolio, paths, settings = demo_inputs()
     results = {}
     print("# Static and dynamic self-financing Delta hedges\n")
     print(f"Python {platform.python_version()}; {platform.system()} {platform.machine()}. All inputs are synthetic.")
