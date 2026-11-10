@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "options-engine"
+version = "1.0.0"
+description = "Option pricing, portfolio risk and self-financing Delta hedge demonstrations"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest==9.2.0"]
+visualization = ["matplotlib==3.10.8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["slow: numerical risk and fine-grid convergence studies; scheduled/manual CI"]

@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "title": "Options Pricing and Risk Engine: Reproducible Valuation, Sensitivity Analysis, and Self-Financing Delta Hedging",
+    "upload_type": "publication",
+    "publication_type": "report",
+    "description": "<p>This report presents a reproducible Python implementation of vanilla option valuation and risk analysis under constant-parameter Black\u2013Scholes\u2013Merton dynamics with continuous dividends. European analytic prices and Greeks provide controls for independent Cox\u2013Ross\u2013Rubinstein trees and Crank\u2013Nicolson finite differences with Rannacher startup. American exercise is treated as an obstacle problem solved by projected successive over-relaxation, with complementarity diagnostics and mesh-estimated exercise boundaries. Numerical sensitivity studies separate perturbation size from spatial and temporal refinement and retain warnings near interpolation and exercise transitions. Signed portfolio scenarios account explicitly for expiry settlement, cash financing and local Greek P&L approximations. Deterministic hedge demonstrations compare unhedged, static and rebalanced Delta strategies using an auditable self-financing stock and cash ledger. Automated tests and synthetic experiments accompany tables, figures and execution provenance. Results are benchmark-specific; grid boundaries, American sensitivities and individual-path hedge outcomes are not presented as universal accuracy or performance guarantees.</p><p>Software: https://github.com/diracadjoint/quant-options-pricing/tree/v1.0.0. Historical experiment provenance is retained in the report and repository.</p>",
+    "creators": [
+      {
+        "name": "Gomes, Matheus de Oliveira"
+      }
+    ],
+    "version": "1.0.0",
+    "access_right": "open",
+    "license": "cc-by-sa-4.0",
+    "keywords": [
+      "option pricing",
+      "Black-Scholes-Merton",
+      "American options",
+      "finite differences",
+      "PSOR",
+      "Delta hedging",
+      "reproducibility"
+    ]
+  }
+}
