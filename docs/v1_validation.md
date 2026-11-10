@@ -1,7 +1,10 @@
-# v1 release-candidate validation record
+# Historical v1.0.0rc1 experiment validation record
 
 This record distinguishes executed local checks from configured remote CI and
-owner decisions. The candidate is 1.0.0rc1; no release or license was published.
+owner decisions at the RC1 experiment stage. Those experiments used 1.0.0rc1.
+This historical record preserves their measured values, source references and
+original commands. Current 1.0.0 release checks are recorded separately in
+[the release validation record](release_v1.0.0_validation.md).
 
 ## Clean environment and provenance
 
@@ -92,18 +95,18 @@ Portfolio expiry rows retain unavailable Taylor values; the American hedge
 example explicitly permits and records warned FD decisions instead of hiding
 those flags. The ledger's self-financing identity does not certify Greek accuracy.
 
-## Branch and publication decisions
+## Historical branch context and current license status
 
-The implementation base was verified as feat/self-financing-delta-hedging at
-68aaee42a115667068495f8df7bb2e3d964c9bb8. Main was still the initial commit during
-preparation; preceding feature PRs remain a dependency chain. The consolidation
-is a separate draft PR targeting that implementation branch, not an unrelated
-main-branch rewrite. Public core interfaces and numerical implementations remain
-unchanged. Version metadata is a release candidate for review.
+At the experiment/consolidation stage, the implementation base was
+feat/self-financing-delta-hedging at 68aaee42a115667068495f8df7bb2e3d964c9bb8,
+and main remained the initial commit. Those references are preserved, as are all
+files under generated/ and their RC1 package/environment metadata. The original
+consolidation commit is 1616940e3157b43f899774b44bc686ac1f0f144b.
 
-No LICENSE existed; MIT is recommended in [the owner decision](license_decision.md)
-but has NOT been adopted. Remaining publication steps are owner approval of a
-license/attribution, review and integration of the PR chain, inspection of remote
-CI (including scheduled/manual numerical checks), visibility/distribution choice,
-and explicit approval of a release/tag. No merge, registry upload, visibility
-change or release publication was performed.
+At that stage no license had been selected. The owner has now explicitly approved
+MIT for the code in version 1.0.0, with Copyright (c) 2026 Matheus de Oliveira Gomes;
+see [the adoption record](license_decision.md) and root LICENSE. This does not
+select the license for a separately deposited technical report on Zenodo.
+Current preparation is a fast-forward continuation of the full implementation
+chain. Merge, visibility, tag, release publication and Zenodo deposit remain
+subject to separate authorization; no DOI is assigned here.

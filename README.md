@@ -1,13 +1,15 @@
 # Options Pricing and Risk Engine
 
-**v1.0.0rc1 — release candidate for review.** A Python research library for
+**v1.0.0 — release preparation for review; not yet tagged or published.** A Python research library for
 European/American vanilla option pricing, risk and portfolio accounting. It
 compares independent numerical methods and follows the financial effects of
 exercise, shocks and Delta hedges through explicit cash ledgers.
 
 All experiments use synthetic data. The runtime core uses only Python's standard
-library. A software license has **not yet been selected**; see the
-[owner's license decision](docs/license_decision.md).
+library. The code is licensed under the [MIT License](LICENSE), approved by the
+owner for v1.0.0. Copyright (c) 2026 Matheus de Oliveira Gomes. This code-license
+decision does not select the license for a separate technical report on Zenodo;
+see the [license record](docs/license_decision.md).
 
 ## Available functionality
 
@@ -69,8 +71,8 @@ Full reproduction (several minutes) regenerates the extended studies and
 original detailed example reports:
 
 ```bash
-python examples/reproduce.py --mode full --output docs/generated
-python scripts/verify_results.py docs/generated
+python examples/reproduce.py --mode full --output work/full-results-v1.0.0
+python scripts/verify_results.py work/full-results-v1.0.0
 python scripts/check_docs.py
 ```
 
@@ -79,6 +81,10 @@ with machine/package/source metadata and file hashes. Quick is representative;
 full adds near-boundary, finer-bump and CRR risk studies. See the
 [reproduction guide](docs/reproduction.md), [measured validation record](docs/v1_validation.md)
 and [figure gallery](docs/gallery.md). Tests/experiments run offline after installation.
+The committed artifacts retain their original `1.0.0rc1` execution metadata,
+commit references and hashes. New runs go to work/ rather than overwriting that
+historical evidence. Current preparation checks are in the
+[v1.0.0 release record](docs/release_v1.0.0_validation.md).
 
 ## Representative measured results
 
@@ -123,5 +129,8 @@ physical delivery, fees, margin or stochastic-path replication claim is included
 GitHub Actions define fast Python 3.10/3.12/3.13 checks and weekly/manual slow
 validation plus full reproduction. Actual local/remote verification status is
 recorded separately; scheduled workflows become active after default-branch
-integration. Release/tag, license and visibility/distribution remain owner
-choices; this candidate performs no publication or merge.
+integration. MIT adoption for code is complete; merge, visibility/distribution,
+tag/release and any Zenodo report deposit still require separate owner authorization.
+This preparation performs none of those actions. Proposed
+[release notes](docs/release_notes_v1.0.0.md) and [Zenodo title/abstract](docs/zenodo_v1.0.0_proposal.md)
+are ready for review; the report license and DOI remain pending.

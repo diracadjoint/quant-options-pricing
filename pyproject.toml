@@ -1,12 +1,14 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "options-engine"
-version = "1.0.0rc1"
+version = "1.0.0"
 description = "Option pricing, portfolio risk and self-financing Delta hedge demonstrations"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = []
 

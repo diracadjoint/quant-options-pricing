@@ -43,9 +43,9 @@ comparisons. Full mode adds the dividend-call/near-boundary/finer-bump/CRR Greek
 studies and regenerates the detailed original example reports:
 
 ```bash
-python examples/reproduce.py --mode full --output docs/generated
-python scripts/verify_results.py docs/generated
-python scripts/check_report_tables.py docs/generated
+python examples/reproduce.py --mode full --output work/full-results-v1.0.0
+python scripts/verify_results.py work/full-results-v1.0.0
+python scripts/check_report_tables.py work/full-results-v1.0.0
 python scripts/check_docs.py
 ```
 
@@ -54,7 +54,9 @@ depend on CPU/load; consult each run's manifest rather than a fixed runtime
 promise. Quick writes to work/ so it does not overwrite committed full results.
 Each output directory should be new or dedicated to one mode: the generator
 never deletes pre-existing files. The committed [gallery](gallery.md) uses full
-results. Neither command fetches market data or needs network once installed.
+results, measured with 1.0.0rc1. Their source/commit metadata and bytes are preserved;
+v1.0.0 reruns use a separate work/ directory. Neither command fetches market data
+or needs network once installed.
 
 Outputs: eight named figures in both PNG/SVG, machine-readable CSV tables,
 data.json (including full numerical risk configurations, repricings and flags),
@@ -108,6 +110,7 @@ Scheduled workflows apply after integration into the default branch. CI is
 configured here; remote status is distinct from local validation and must be
 reviewed before release.
 
-Before publication: review/integrate the dependent implementation PRs; adopt a
-license explicitly; check remote CI and intended visibility; then approve the
-release/tag. This change is a release candidate and performs no publication.
+MIT is approved and installed for the code. Before publication, review the full
+implementation PR against main, check remote CI and intended visibility, and
+authorize merge and release/tag separately. The preparation performs no publication.
+Zenodo report licensing/deposit is a separate decision; no DOI has been assigned.
