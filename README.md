@@ -7,10 +7,12 @@ exercise, shocks and Delta hedges through explicit cash ledgers.
 
 [Technical report (PDF)](https://github.com/diracadjoint/quant-options-pricing/releases/download/v1.0.0/technical_report.pdf)
 · [v1.0.0 release](https://github.com/diracadjoint/quant-options-pricing/releases/tag/v1.0.0)
+· [Software DOI](https://doi.org/10.5281/zenodo.24118282)
+· [Report DOI](https://doi.org/10.5281/zenodo.24118486)
 · [Cite this software](CITATION.cff)
 
-The report is licensed CC BY-SA 4.0; the code is MIT. The Zenodo DOI will be
-added here after the report is deposited and its DOI is verified.
+The report is licensed CC BY-SA 4.0; the code is MIT. Cite the software using
+DOI `10.5281/zenodo.24118282` and the report using DOI `10.5281/zenodo.24118486`.
 
 All experiments use synthetic data. The runtime core uses only Python's standard
 library. The code is licensed under the [MIT License](LICENSE), approved by the
@@ -144,4 +146,6 @@ Read the [release notes](docs/release_notes_v1.0.0.md),
 [report source](docs/technical_report.md) and
 [Zenodo metadata](docs/zenodo_v1.0.0_proposal.md).
 The owner authorized publication and selected CC BY-SA 4.0 for the report.
-Zenodo deposit and DOI remain pending actual submission.
+The owner confirmed the Zenodo publications: software DOI
+[10.5281/zenodo.24118282](https://doi.org/10.5281/zenodo.24118282) and report DOI
+[10.5281/zenodo.24118486](https://doi.org/10.5281/zenodo.24118486).

@@ -14,24 +14,20 @@ the software's MIT license. Its original RC1 experiment provenance stays intact.
 
 ## Zenodo
 
-The owner authorized publication of this report. No authenticated Zenodo session
-or token is available in the current environment, and no deposition integration
-was found among the available plugins. No deposit, reserved DOI or published DOI
-is claimed. Use [the metadata](zenodo_metadata.json) and the exact PDF above.
-The creator is Matheus de Oliveira Gomes; report license is CC BY-SA 4.0.
-The software release remains v1.0.0, dated 2026-11-10.
+The owner confirmed publication and identified these separate records:
 
-After authenticated upload, verify the PDF checksum and metadata, publish the
-report, and verify the resulting public record and DOI. Then add the report DOI
-to the README's top links and report metadata/proposal. Keep software and report
-citations distinct; a report DOI must not be presented as a software DOI.
-Keep the historical release tag and checked-in experiment files unchanged.
+- Report (CC BY-SA 4.0): https://doi.org/10.5281/zenodo.24118486.
+- Software (MIT): https://doi.org/10.5281/zenodo.24118282.
+
+The README links both records; CITATION.cff identifies the software DOI.
+The original PDF, release assets, tag and historical experiments remain unchanged.
+The metadata JSON preserves the original pre-deposit input, not a Zenodo API response.
 
 ## GitHub About and profile
 
 The repository is public. The current connector supports file/PR operations but
 does not expose repository About/topic updates or profile pinning; the local
-GitHub CLI has no valid authenticated token. These settings remain pending.
+GitHub CLI has no valid authenticated token. The owner confirmed completing About and topics; profile pinning was not independently checked.
 
 In the repository's About editor, use:
 

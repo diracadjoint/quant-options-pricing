@@ -1,13 +1,15 @@
-# Proposed Zenodo technical-report metadata
+# Zenodo technical-report metadata
 
-Status: owner authorized deposit; access/submission pending, no report deposited.
+Status: publication and DOI mapping confirmed by the owner.
 Report license: **CC BY-SA 4.0**, explicitly selected by the owner. Code license: MIT.
-DOI: **pending until deposit**; no DOI is reserved or claimed here.
+Report DOI: [10.5281/zenodo.24118486](https://doi.org/10.5281/zenodo.24118486).
+Software DOI: [10.5281/zenodo.24118282](https://doi.org/10.5281/zenodo.24118282).
+These identifiers refer to separate works, not a concept/version pair.
 
-Upload-ready [report PDF](technical_report.pdf), [source](technical_report.md),
+Preserved [report PDF](technical_report.pdf), [source](technical_report.md),
 [license record](report_license.md) and [metadata JSON](zenodo_metadata.json).
 The JSON is an input proposal for the Zenodo deposition API, not a service response
-or proof of deposit. It intentionally contains no DOI or fabricated record ID.
+or proof of deposit. It preserves the pre-deposit input; the confirmed identifiers are recorded above.
 
 ## Title
 

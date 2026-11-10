@@ -1,11 +1,12 @@
 cff-version: 1.2.0
-message: "Please cite this software using the metadata below. The separately licensed technical report is linked in the README; its Zenodo DOI is pending deposit."
+message: "Please cite this software using the metadata below. The separately licensed technical report is linked in the README; its DOI is 10.5281/zenodo.24118486."
 type: software
 title: "Options Pricing and Risk Engine"
 authors:
   - family-names: "Gomes"
     given-names: "Matheus de Oliveira"
 version: "1.0.0"
+doi: "10.5281/zenodo.24118282"
 date-released: "2026-11-10"
 license: MIT
 url: "https://github.com/diracadjoint/quant-options-pricing/releases/tag/v1.0.0"
