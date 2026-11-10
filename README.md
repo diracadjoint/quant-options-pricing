@@ -5,6 +5,13 @@ European/American vanilla option pricing, risk and portfolio accounting. It
 compares independent numerical methods and follows the financial effects of
 exercise, shocks and Delta hedges through explicit cash ledgers.
 
+[Technical report (PDF)](https://github.com/diracadjoint/quant-options-pricing/releases/download/v1.0.0/technical_report.pdf)
+· [v1.0.0 release](https://github.com/diracadjoint/quant-options-pricing/releases/tag/v1.0.0)
+· [Cite this software](CITATION.cff)
+
+The report is licensed CC BY-SA 4.0; the code is MIT. The Zenodo DOI will be
+added here after the report is deposited and its DOI is verified.
+
 All experiments use synthetic data. The runtime core uses only Python's standard
 library. The code is licensed under the [MIT License](LICENSE), approved by the
 owner for v1.0.0. Copyright (c) 2026 Matheus de Oliveira Gomes. This code-license

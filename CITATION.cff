@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "Please cite this software using the metadata below. The separately licensed technical report is linked in the README; its Zenodo DOI is pending deposit."
+type: software
+title: "Options Pricing and Risk Engine"
+authors:
+  - family-names: "Gomes"
+    given-names: "Matheus de Oliveira"
+version: "1.0.0"
+date-released: "2026-11-10"
+license: MIT
+url: "https://github.com/diracadjoint/quant-options-pricing/releases/tag/v1.0.0"
+repository-code: "https://github.com/diracadjoint/quant-options-pricing"
+abstract: "Python engine for European and American option pricing, portfolio risk, and self-financing delta hedging."
+keywords:
+  - quantitative-finance
+  - options-pricing
+  - risk-management
+  - python
