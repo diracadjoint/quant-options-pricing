@@ -110,7 +110,9 @@ Scheduled workflows apply after integration into the default branch. CI is
 configured here; remote status is distinct from local validation and must be
 reviewed before release.
 
-MIT is approved and installed for the code. Before publication, review the full
-implementation PR against main, check remote CI and intended visibility, and
-authorize merge and release/tag separately. The preparation performs no publication.
-Zenodo report licensing/deposit is a separate decision; no DOI has been assigned.
+MIT is approved and installed for the code; CC BY-SA 4.0 was separately approved
+for the report. The owner authorized publication. The v1 release workflow gates
+tag/release creation on the full suite, preserved-artifact checks and a separate
+full reproduction, retaining its outputs as an Actions artifact. Check actual
+status in GitHub Actions/Releases. Zenodo deposit and DOI remain pending actual
+submission; no DOI has been assigned.

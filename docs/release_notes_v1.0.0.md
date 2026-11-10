@@ -70,5 +70,7 @@ conventions. Hedge examples hold American options to expiry without simulating
 early exercise or assignment; stock dividends are credited at interval ends.
 No market data feed, physical delivery, margin or transaction costs are modeled.
 
-The MIT decision applies to code. A separately deposited Zenodo technical report
-will have its own license decision. **DOI pending until an authorized deposit.**
+The MIT decision applies to code. The technical report is separately licensed
+**CC BY-SA 4.0**, as selected by the owner. **DOI pending actual deposit.**
+The release includes the report PDF/source, Zenodo metadata proposal and a Python
+wheel. Zenodo submission is separate from GitHub publication.

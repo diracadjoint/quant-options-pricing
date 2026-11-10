@@ -1,10 +1,10 @@
 # Options Pricing and Risk Engine — implemented v1 specification
 
-Status: **1.0.0, prepared for owner review; not yet tagged or published**.
+Status: **1.0.0; publication authorized by the owner**.
 This document describes delivered behavior. The owner has approved MIT for the
-code; see LICENSE. Integration, remote CI review and release/tag creation remain
-separate authorized steps. The technical report's Zenodo license and DOI are
-pending. All examples use synthetic data. Historical experimental artifacts keep
+code; see LICENSE. The report is separately licensed CC BY-SA 4.0. Release status
+is recorded in GitHub Releases; Zenodo deposit and DOI remain pending actual
+submission. All examples use synthetic data. Historical experimental artifacts keep
 their original 1.0.0rc1 metadata and source/commit references unchanged.
 
 ## Purpose and scope
@@ -216,7 +216,7 @@ Validation is a synthetic benchmark set, not calibration or universal numerical
 accuracy. Free-boundary/Gamma estimates remain sensitive to resolution, bumps
 and nonsmooth exercise transitions. Deterministic hedge paths do not recreate
 BSM diffusion quadratic variation; more rebalancing need not improve every path.
-The code is MIT-licensed; this does not choose the license of a separate Zenodo report.
+The code is MIT-licensed; the technical report is separately CC BY-SA 4.0.
 
 Possible extensions: negative-rate PDE boundary analysis, nonuniform/adaptive
 grids, American exercise/assignment path rules, discrete dividends, date handling,

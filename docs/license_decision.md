@@ -12,11 +12,12 @@ license metadata; the pinned, tested builder remains setuptools 84.2.1.
 This supersedes the earlier recommendation-only state. Original experimental
 artifacts and their 1.0.0rc1 metadata/source references are retained, not relabeled.
 
-The decision applies to the code. It does **not** select or imply the license for
-a separately deposited technical report on Zenodo. The report license will be
-chosen separately; DOI is pending until an authorized deposit. Dependency
+The decision applies to the code. In a separate subsequent decision, the owner
+selected **CC BY-SA 4.0** for the technical report; see
+[the report license](report_license.md). DOI is pending actual deposit. Dependency
 licenses remain separate from the project's code license.
 
-The code-license approval does not authorize a merge, visibility change, tag,
-GitHub release, registry upload or Zenodo deposit. Those actions remain pending
-explicit owner authorization after review.
+The original code-license approval alone did not authorize publication. The
+owner subsequently authorized merge, tag/release, public repository visibility
+and report deposit. Completion of these operations is recorded separately;
+authorization is not evidence that a deposit has occurred or a DOI exists.

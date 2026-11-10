@@ -1,7 +1,10 @@
 # v1.0.0 release preparation and validation
 
-Status: preparation for owner review; no merge, visibility change, tag, GitHub
-release, registry upload or Zenodo deposit is authorized by this preparation.
+Status: historical preparation checks, followed by owner publication approval.
+The original preparation itself performed no publication. The owner subsequently
+authorized merge, tag/release, public visibility and Zenodo deposit, selecting
+CC BY-SA 4.0 for the report. Actual Actions/Release/deposit outcomes are separate
+from the local preparation measurements retained below. No DOI is claimed.
 
 ## Initial repository audit
 
@@ -68,7 +71,8 @@ be checked on GitHub. No remote slow workflow was manually dispatched here.
 
 English [release notes](release_notes_v1.0.0.md) and a proposed
 [Zenodo title/abstract](zenodo_v1.0.0_proposal.md) are prepared for copying/review.
-No DOI is assigned. Separate owner authorization remains required for merge,
-visibility changes, tag/release publication and any report deposit. Slow CI can
-also be triggered manually after workflow integration into the default branch;
-configured automation is distinct from the checks actually executed here.
+No DOI is assigned. The later publication workflow runs the full tests and full
+reproduction in a separate directory before tag/release creation. Its actual
+result is recorded in GitHub Actions, not preclaimed by the preparation checks
+above. Report PDF/source, approved CC BY-SA 4.0 license and Zenodo input metadata
+are prepared separately; deposit still requires authenticated service access.

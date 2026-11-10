@@ -1,6 +1,6 @@
 # Options Pricing and Risk Engine
 
-**v1.0.0 — release preparation for review; not yet tagged or published.** A Python research library for
+**v1.0.0.** A Python research library for
 European/American vanilla option pricing, risk and portfolio accounting. It
 compares independent numerical methods and follows the financial effects of
 exercise, shocks and Delta hedges through explicit cash ledgers.
@@ -8,8 +8,9 @@ exercise, shocks and Delta hedges through explicit cash ledgers.
 All experiments use synthetic data. The runtime core uses only Python's standard
 library. The code is licensed under the [MIT License](LICENSE), approved by the
 owner for v1.0.0. Copyright (c) 2026 Matheus de Oliveira Gomes. This code-license
-decision does not select the license for a separate technical report on Zenodo;
-see the [license record](docs/license_decision.md).
+decision is separate from the technical report's owner-approved **CC BY-SA 4.0**;
+see the [code license record](docs/license_decision.md) and
+[report license](docs/report_license.md).
 
 ## Available functionality
 
@@ -127,10 +128,13 @@ hold to expiry and do not simulate early exercise/assignment. No market feed,
 physical delivery, fees, margin or stochastic-path replication claim is included.
 
 GitHub Actions define fast Python 3.10/3.12/3.13 checks and weekly/manual slow
-validation plus full reproduction. Actual local/remote verification status is
-recorded separately; scheduled workflows become active after default-branch
-integration. MIT adoption for code is complete; merge, visibility/distribution,
-tag/release and any Zenodo report deposit still require separate owner authorization.
-This preparation performs none of those actions. Proposed
-[release notes](docs/release_notes_v1.0.0.md) and [Zenodo title/abstract](docs/zenodo_v1.0.0_proposal.md)
-are ready for review; the report license and DOI remain pending.
+validation plus full reproduction. The v1 publication workflow requires the full
+suite and a separate full reproduction before creating the tag and release on
+main. Actual execution status is available in GitHub Actions and
+[Releases](https://github.com/diracadjoint/quant-options-pricing/releases).
+Read the [release notes](docs/release_notes_v1.0.0.md),
+[technical report PDF](docs/technical_report.pdf),
+[report source](docs/technical_report.md) and
+[Zenodo metadata](docs/zenodo_v1.0.0_proposal.md).
+The owner authorized publication and selected CC BY-SA 4.0 for the report.
+Zenodo deposit and DOI remain pending actual submission.

@@ -1,8 +1,13 @@
 # Proposed Zenodo technical-report metadata
 
-Status: prepared for owner review only; no report has been deposited.
-Report license: **pending separate owner decision**. Code license: MIT.
+Status: owner authorized deposit; access/submission pending, no report deposited.
+Report license: **CC BY-SA 4.0**, explicitly selected by the owner. Code license: MIT.
 DOI: **pending until deposit**; no DOI is reserved or claimed here.
+
+Upload-ready [report PDF](technical_report.pdf), [source](technical_report.md),
+[license record](report_license.md) and [metadata JSON](zenodo_metadata.json).
+The JSON is an input proposal for the Zenodo deposition API, not a service response
+or proof of deposit. It intentionally contains no DOI or fabricated record ID.
 
 ## Title
 
